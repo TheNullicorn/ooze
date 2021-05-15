@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>me.nullicorn</groupId>
+  <artifactId>ooze</artifactId>
+  <version>0.0.1</version>
+  <packaging>pom</packaging>
+  <modules>
+    <module>api</module>
+    <module>convert</module>
+    <module>common</module>
+  </modules>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.source>1.8</maven.compiler.source>
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>jitpack.io</id>
+      <url>https://jitpack.io</url>
+    </repository>
+  </repositories>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>1.18.20</version>
+        <scope>provided</scope>
+      </dependency>
+
+      <!-- NBT Reading & Writing -->
+      <dependency>
+        <groupId>com.github.TheNullicorn</groupId>
+        <artifactId>Nedit</artifactId>
+        <version>574cbfbc1e</version>
+      </dependency>
+
+      <!-- Zstd Compression -->
+      <dependency>
+        <groupId>com.github.luben</groupId>
+        <artifactId>zstd-jni</artifactId>
+        <version>1.4.9-5</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+</project>

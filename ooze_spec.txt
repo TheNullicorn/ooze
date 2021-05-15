@@ -1,0 +1,69 @@
+================================
+
+      “Ooze” File Format
+
+   Based on Hypixel's "Slime"
+         world format:
+   pastebin.com/raw/EVCNAmkw
+
+================================
+
+4 bytes   (uint)    - magic = 0x610BB10B
+1 byte   (ubyte)    - version; current = 0
+2 bytes  (short)    - xPos of chunk with lowest x
+2 bytes  (short)    - zPos of chunk with lowest z
+2 bytes (ushort)    - world width (in chunks)
+2 bytes (ushort)    - world depth (in chunks)
+[depends]           - chunk bitmask
+  -> each chunk is 1 bit (0 = all air or missing, 1 = present)
+  -> chunks are ordered XZ, meaning...
+    -> the last byte has unused bits on the right
+    -> the whole bitmask is ceil((width * depth) / 8) bytes
+
+4 bytes (int)       - compressed chunks size
+4 bytes (int)       - uncompressed chunks size
+  <array of chunks> (size determined from chunk bitmask)
+  compressed using Zstandard
+  see format below
+
+4 bytes (int)       - compressed tile entities size
+4 bytes (int)       - uncompressed tile entities size
+  <array of tile entity nbt compounds>
+  same format as Minecraft
+  compressed using Zstandard
+
+1 byte (boolean) - has entities
+[if has entities]
+  4 bytes (int)     - compressed entities size
+  4 bytes (int)     - uncompressed entities size
+    <array of entity nbt compounds>
+    same format as Minecraft
+    compressed using Zstandard
+
+4 bytes (int)       - compressed “extra” size
+4 bytes (int)       - uncompressed “extra” size
+[depends]           - compound tag compressed using Zstandard
+
+---------------
+ Chunk Format
+---------------
+4    bytes (uint)   - Minecraft data version that the chunk was created in (used for upgrading)
+4096 bytes          - biome IDs ordered XZY (in 4x4x4 cubes; same as in 1.15+); 4 bytes each
+2    bytes (ushort) - number of entries in the block palette minus 1 (add 1 to get the actual length)
+    <array of palette entries>
+    see format below
+
+2    bytes          - sections mask (bottom to top; 0 = all air or missing, 1 = present)
+8192 bytes          - block array; 2 bytes each; each entry is an index in the block palette
+
+---------------
+ Palette Entry
+---------------
+1 byte     (ubyte) - length of block ID (in bytes)
+[depends] (string) - block ID
+1 byte   (boolean) - has properties
+[if has properties]
+  [depends]        - NBT compound containing the block state's properties (e.g. facing, power, axis, etc)
+     -> the root compound's name should be an empty string
+     -> contents of the compound should be exactly as stored in the vanilla chunk format
+     -> the compound's length is unspecified and should be read until the root compound ends
