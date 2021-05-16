@@ -1,6 +1,8 @@
 package me.nullicorn.ooze.storage;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
 import me.nullicorn.ooze.serialize.IntArray;
 import me.nullicorn.ooze.serialize.OozeDataOutputStream;
 import me.nullicorn.ooze.serialize.OozeSerializable;
@@ -115,5 +117,46 @@ public class PadlessIntArray implements IntArray, OozeSerializable {
   public void serialize(OozeDataOutputStream out) throws IOException {
     out.writeVarInt(maxValue);
     out.write(data);
+  }
+
+  @Override
+  public String toString() {
+    if (size == 0) {
+      return "[]";
+    }
+
+    StringBuilder b = new StringBuilder();
+    b.append('[');
+
+    forEach((index, value) -> {
+      b.append(value);
+      if (index < size - 1) {
+        b.append(", ");
+      }
+    });
+
+    b.append(']');
+    return b.toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PadlessIntArray that = (PadlessIntArray) o;
+    return size == that.size &&
+           maxValue == that.maxValue &&
+           Arrays.equals(data, that.data);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects.hash(size, maxValue);
+    result = 31 * result + Arrays.hashCode(data);
+    return result;
   }
 }
