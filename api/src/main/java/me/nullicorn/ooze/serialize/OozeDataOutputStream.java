@@ -67,8 +67,8 @@ public class OozeDataOutputStream extends DataOutputStream {
   }
 
   /**
-   * Same as {@link #writeCompressed(byte[], int)}, but compression {@code level} defaults to
-   * {@literal 3}.
+   * Same as {@link #writeCompressed(byte[], int)}, but compression {@code level} defaults to {@code
+   * 3}.
    *
    * @see #writeCompressed(byte[], int)
    */
