@@ -28,6 +28,26 @@ public class OozeDataOutputStream extends DataOutputStream {
   }
 
   /**
+   * Writes a variable-length, LEB128-encoded integer to the underlying output stream.
+   *
+   * @throws IOException If the number could not be written.
+   */
+  public void writeVarInt(int value) throws IOException {
+    if (value == 0) {
+      write(value);
+    }
+
+    do {
+      int temp = value & 0x7F;
+      value >>>= 7;
+      if (value != 0) {
+        temp |= 0x80;
+      }
+      out.write(temp);
+    } while (value != 0);
+  }
+
+  /**
    * Writes the standard Ooze header to the underlying output stream; four bytes of magic numbers
    * followed by a 1-byte {@link #getFormatVersion() version number}.
    *
@@ -35,7 +55,7 @@ public class OozeDataOutputStream extends DataOutputStream {
    */
   public void writeHeader() throws IOException {
     writeInt(MAGIC_NUMBER);
-    writeByte(getFormatVersion());
+    writeVarInt(getFormatVersion());
   }
 
   /**
@@ -85,8 +105,8 @@ public class OozeDataOutputStream extends DataOutputStream {
   public void writeCompressed(byte[] data, int level) throws IOException {
     byte[] compressed = Zstd.compress(data, level);
 
-    writeInt(compressed.length);
-    writeInt(data.length);
+    writeVarInt(compressed.length);
+    writeVarInt(data.length);
     write(compressed);
   }
 }
