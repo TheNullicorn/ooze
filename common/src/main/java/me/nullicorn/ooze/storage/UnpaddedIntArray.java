@@ -8,12 +8,12 @@ import me.nullicorn.ooze.serialize.OozeDataOutputStream;
 import me.nullicorn.ooze.serialize.OozeSerializable;
 
 /**
- * An integer array that internally packs values as close as possible to maintain low memory and
- * disk space when serialized. Loosely based on Minecraft's block storage format.
+ * An integer array that internally packs values as close as possible to maintain low footprint
+ * in-memory and when serialized. Loosely based on Minecraft's block storage format.
  *
  * @author Nullicorn
  */
-public class PadlessIntArray implements IntArray, OozeSerializable {
+public class UnpaddedIntArray implements IntArray, OozeSerializable {
 
   private final byte[] data;
 
@@ -33,7 +33,7 @@ public class PadlessIntArray implements IntArray, OozeSerializable {
   // A mask of [bitsPerCell] set bits.
   private final int cellMask;
 
-  public PadlessIntArray(int size, int maxValue) {
+  public UnpaddedIntArray(int size, int maxValue) {
     this.size = size;
     this.maxValue = maxValue;
     this.bitsPerCell = Math.max(1, Integer.SIZE - Integer.numberOfLeadingZeros(maxValue));
@@ -147,7 +147,7 @@ public class PadlessIntArray implements IntArray, OozeSerializable {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    PadlessIntArray that = (PadlessIntArray) o;
+    UnpaddedIntArray that = (UnpaddedIntArray) o;
     return size == that.size &&
            maxValue == that.maxValue &&
            Arrays.equals(data, that.data);
