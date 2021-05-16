@@ -1,6 +1,9 @@
-package me.nullicorn.ooze.serialize;
+package me.nullicorn.ooze.storage;
 
 import java.io.IOException;
+import me.nullicorn.ooze.serialize.IntArray;
+import me.nullicorn.ooze.serialize.OozeDataOutputStream;
+import me.nullicorn.ooze.serialize.OozeSerializable;
 
 /**
  * An integer array that internally packs values as close as possible to maintain low memory and
