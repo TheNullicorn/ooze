@@ -36,7 +36,7 @@ public class PadlessIntArray implements IntArray, OozeSerializable {
   public PadlessIntArray(int size, int maxValue) {
     this.size = size;
     this.maxValue = maxValue;
-    this.bitsPerCell = Integer.SIZE - Integer.numberOfLeadingZeros(maxValue);
+    this.bitsPerCell = Math.max(1, Integer.SIZE - Integer.numberOfLeadingZeros(maxValue));
     this.cellMask = (1 << bitsPerCell) - 1;
 
     int bytesNeeded = (int) Math.ceil(size * bitsPerCell / (double) Byte.SIZE);
