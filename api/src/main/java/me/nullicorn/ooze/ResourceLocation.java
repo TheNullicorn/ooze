@@ -1,5 +1,6 @@
 package me.nullicorn.ooze;
 
+import java.util.Objects;
 import java.util.regex.Pattern;
 import lombok.Getter;
 
@@ -76,5 +77,23 @@ public class ResourceLocation {
   @Override
   public String toString() {
     return namespace + PATH_INDICATOR + path;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ResourceLocation that = (ResourceLocation) o;
+    return namespace.equals(that.namespace) &&
+           path.equals(that.path);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(namespace, path);
   }
 }
