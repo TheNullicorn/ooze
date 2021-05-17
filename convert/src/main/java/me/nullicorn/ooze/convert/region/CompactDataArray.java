@@ -167,7 +167,7 @@ public class CompactDataArray implements IntArray {
     int cellIndex = 0;
     for (long word : words) {
       for (int i = 0; i < cellsPerWord && cellIndex < size; i++, cellIndex++) {
-        action.accept(i, (int) (word & cellMask));
+        action.accept(cellIndex, (int) (word & cellMask));
         word >>>= bitsPerCell;
       }
     }
