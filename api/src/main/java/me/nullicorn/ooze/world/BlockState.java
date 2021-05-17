@@ -15,6 +15,12 @@ import org.jetbrains.annotations.Nullable;
 public class BlockState {
 
   /**
+   * A block state that can generally be used as a fallback when no other state can be found (for
+   * whatever reason).
+   */
+  public static final BlockState DEFAULT = new BlockState(new ResourceLocation("air"));
+
+  /**
    * Constructs a block state from its serialized NBT format.
    *
    * @return The deserialized block state.
