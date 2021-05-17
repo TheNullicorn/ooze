@@ -78,7 +78,24 @@ public class BlockPalette implements OozeSerializable, Iterable<BlockState> {
     return registeredStates.iterator();
   }
 
-  // TODO: 5/16/21 Add "PaletteUpgrader" for mapping old palette indices to updated ones.
+  @Override
+  public String toString() {
+    if (registeredStates.isEmpty()) {
+      return "{}";
+    }
+
+    StringBuilder b = new StringBuilder();
+    b.append('{');
+    for (int i = 0; i < registeredStates.size(); i++) {
+      b.append(i).append(": ").append(registeredStates.get(i));
+      if (i < registeredStates.size() - 1) {
+        b.append(", ");
+      }
+    }
+    b.append('}');
+    return b.toString();
+  }
+
 //  public static PaletteUpgrader getLegacyUpgradeMap() {
 //    // Return an upgrade map for pre-flattening data values to modern block states.
 //    throw new UnsupportedOperationException("Not yet implemented.");
