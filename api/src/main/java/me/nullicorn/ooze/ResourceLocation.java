@@ -63,6 +63,14 @@ public class ResourceLocation {
   @Getter
   private final String path;
 
+  /**
+   * Same as {@link ResourceLocation#ResourceLocation(String, String)}, but {@code namespace}
+   * defaults to "minecraft".
+   */
+  public ResourceLocation(String path) {
+    this(DEFAULT_NAMESPACE, path);
+  }
+
   public ResourceLocation(String namespace, String path) {
     if (!namespaceFormat.matcher(namespace).matches()) {
       throw new IllegalArgumentException("Invalid namespace: \"" + namespace + "\"");
