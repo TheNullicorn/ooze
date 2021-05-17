@@ -136,7 +136,7 @@ public class CompactDataArray implements IntArray {
   }
 
   @Override
-  public void set(int index, int value) {
+  public int set(int index, int value) {
     if (index < 0 || index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     } else if (value < 0 || value > maxValue) {
@@ -145,11 +145,14 @@ public class CompactDataArray implements IntArray {
 
     int wordIndex = getWordIndexForCell(index);
     int cellOffset = getCellOffset(index);
+    int previousValue = get(index);
 
     long word = words[wordIndex];
     word &= ~(cellMask << cellOffset); // Clear the cell.
     word |= (value & cellMask) << cellOffset; // Insert the value.
     words[wordIndex] = word;
+
+    return previousValue;
   }
 
   @Override

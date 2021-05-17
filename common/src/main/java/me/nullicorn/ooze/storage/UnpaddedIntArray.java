@@ -85,7 +85,7 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
   }
 
   @Override
-  public void set(int index, int value) {
+  public int set(int index, int value) {
     if (index < 0 || index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     } else if (value < 0) {
@@ -98,17 +98,24 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
     int bitOffset = bitIndex % Byte.SIZE;
     int byteIndex = bitIndex / Byte.SIZE;
     int valueMask = cellMask;
+    int totalBitsWritten = 0;
+    int previousValue = 0;
 
     while (valueMask != 0) {
+      previousValue |= (((data[byteIndex] & 0xFF) >> bitOffset) & valueMask) << totalBitsWritten;
+
       data[byteIndex] &= ~(valueMask << bitOffset); // Clear all bits in the cell.
       data[byteIndex] |= ((value & valueMask) << bitOffset); // Insert the value into the cell.
 
       int bitsWritten = Math.min(Integer.bitCount(valueMask), Byte.SIZE - bitOffset);
+      totalBitsWritten += bitsWritten;
       value >>>= bitsWritten;
       valueMask >>>= bitsWritten;
       byteIndex++;
       bitOffset = 0;
     }
+
+    return previousValue;
   }
 
   @Override
