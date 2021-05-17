@@ -2,6 +2,7 @@ package me.nullicorn.ooze.convert.region;
 
 import java.util.Arrays;
 import java.util.Objects;
+import me.nullicorn.ooze.BitUtils;
 import me.nullicorn.ooze.serialize.IntArray;
 import me.nullicorn.ooze.storage.UnpaddedIntArray;
 
@@ -16,18 +17,11 @@ public class CompactDataArray implements IntArray {
   private static final int BITS_PER_WORD = Long.SIZE;
 
   /**
-   * @return The maximum number of bits needed to represent the {@code value}.
-   */
-  private static int bitsNeededToStore(int value) {
-    return Math.max(1, Integer.SIZE - Integer.numberOfLeadingZeros(value));
-  }
-
-  /**
    * @return The number of words needed to store {@code size} values that can be at most {@code
    * maxValue}.
    */
   private static int wordsNeeded(int size, int maxValue) {
-    int bitsPerCell = bitsNeededToStore(maxValue);
+    int bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
     int cellsPerWord = BITS_PER_WORD / bitsPerCell;
     return (int) Math.ceil(size / (double) cellsPerWord);
   }
@@ -50,8 +44,8 @@ public class CompactDataArray implements IntArray {
       CompactDataArray array = new CompactDataArray(size, maxValue);
 
       // Extract values from unpadded format.
-      int bitsPerCell = bitsNeededToStore(maxValue);
-      int cellMask = (1 << bitsPerCell) - 1;
+      int bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
+      int cellMask = BitUtils.createBitMask(bitsPerCell);
       for (int cellIndex = 0; cellIndex < size; cellIndex++) {
         int bitIndex = cellIndex * bitsPerCell;
         int startWord = bitIndex / BITS_PER_WORD;
@@ -114,9 +108,9 @@ public class CompactDataArray implements IntArray {
     this.maxValue = maxValue;
     this.words = words;
 
-    bitsPerCell = bitsNeededToStore(maxValue);
+    bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
     cellsPerWord = BITS_PER_WORD / bitsPerCell;
-    cellMask = (1 << bitsPerCell) - 1L;
+    cellMask = BitUtils.createBitMask(bitsPerCell);
 
     if (words.length < wordsNeeded(size, maxValue)) {
       throw new IllegalArgumentException("Cannot store " + size + " values in " +

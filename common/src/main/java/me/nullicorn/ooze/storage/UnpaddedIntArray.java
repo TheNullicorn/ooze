@@ -3,6 +3,7 @@ package me.nullicorn.ooze.storage;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import me.nullicorn.ooze.BitUtils;
 import me.nullicorn.ooze.serialize.IntArray;
 import me.nullicorn.ooze.serialize.OozeDataOutputStream;
 import me.nullicorn.ooze.serialize.OozeSerializable;
@@ -14,13 +15,6 @@ import me.nullicorn.ooze.serialize.OozeSerializable;
  * @author Nullicorn
  */
 public class UnpaddedIntArray implements IntArray, OozeSerializable {
-
-  /**
-   * @return The minimum number of bits needed to represent the {@code value}.
-   */
-  private static int bitsNeededToStore(int value) {
-    return Math.max(1, Integer.SIZE - Integer.numberOfLeadingZeros(value));
-  }
 
   private final byte[] data;
 
@@ -43,8 +37,8 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
   public UnpaddedIntArray(int size, int maxValue) {
     this.size = size;
     this.maxValue = maxValue;
-    this.bitsPerCell = bitsNeededToStore(maxValue);
-    this.cellMask = (1 << bitsPerCell) - 1;
+    this.bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
+    this.cellMask = BitUtils.createBitMask(bitsPerCell);
 
     int bytesNeeded = (int) Math.ceil(size * bitsPerCell / (double) Byte.SIZE);
     this.data = new byte[bytesNeeded];
@@ -64,19 +58,21 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
       throw new ArrayIndexOutOfBoundsException(index);
     }
 
-    int value = 0;
     int bitIndex = index * bitsPerCell;
     int bitOffset = bitIndex % Byte.SIZE;
     int byteIndex = bitIndex / Byte.SIZE;
-    int valueMask = cellMask;
     int totalBitsRead = 0;
+
+    int value = 0;
+    int valueMask = cellMask;
 
     while (valueMask != 0) {
       value |= (((data[byteIndex] & 0xFF) >> bitOffset) & valueMask) << totalBitsRead;
 
       int bitsRead = Math.min(Integer.bitCount(valueMask), Byte.SIZE - bitOffset);
-      totalBitsRead += bitsRead;
       valueMask >>>= bitsRead;
+
+      totalBitsRead += bitsRead;
       byteIndex++;
       bitOffset = 0;
     }
@@ -97,20 +93,23 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
     int bitIndex = index * bitsPerCell;
     int bitOffset = bitIndex % Byte.SIZE;
     int byteIndex = bitIndex / Byte.SIZE;
-    int valueMask = cellMask;
     int totalBitsWritten = 0;
+
     int previousValue = 0;
+    int valueMask = cellMask;
 
     while (valueMask != 0) {
+      // Read previous value.
       previousValue |= (((data[byteIndex] & 0xFF) >> bitOffset) & valueMask) << totalBitsWritten;
 
       data[byteIndex] &= ~(valueMask << bitOffset); // Clear all bits in the cell.
-      data[byteIndex] |= ((value & valueMask) << bitOffset); // Insert the value into the cell.
+      data[byteIndex] |= ((value & valueMask) << bitOffset); // Insert new value into the cell.
 
       int bitsWritten = Math.min(Integer.bitCount(valueMask), Byte.SIZE - bitOffset);
-      totalBitsWritten += bitsWritten;
       value >>>= bitsWritten;
       valueMask >>>= bitsWritten;
+
+      totalBitsWritten += bitsWritten;
       byteIndex++;
       bitOffset = 0;
     }
@@ -149,7 +148,7 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
    * values in both.
    */
   UnpaddedIntArray resizeIfNecessary(int newMaxValue) {
-    int requiredCellSize = bitsNeededToStore(newMaxValue);
+    int requiredCellSize = BitUtils.bitsNeededToStore(newMaxValue);
     if (requiredCellSize == bitsPerCell) {
       if (newMaxValue != maxValue) {
         return new UnpaddedIntArray(size,
