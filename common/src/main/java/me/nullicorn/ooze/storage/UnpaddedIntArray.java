@@ -15,6 +15,13 @@ import me.nullicorn.ooze.serialize.OozeSerializable;
  */
 public class UnpaddedIntArray implements IntArray, OozeSerializable {
 
+  /**
+   * @return The minimum number of bits needed to represent the {@code value}.
+   */
+  private static int bitsNeededToStore(int value) {
+    return Math.max(1, Integer.SIZE - Integer.numberOfLeadingZeros(value));
+  }
+
   private final byte[] data;
 
   // Number of "cells" in the array.
@@ -36,11 +43,19 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
   public UnpaddedIntArray(int size, int maxValue) {
     this.size = size;
     this.maxValue = maxValue;
-    this.bitsPerCell = Math.max(1, Integer.SIZE - Integer.numberOfLeadingZeros(maxValue));
+    this.bitsPerCell = bitsNeededToStore(maxValue);
     this.cellMask = (1 << bitsPerCell) - 1;
 
     int bytesNeeded = (int) Math.ceil(size * bitsPerCell / (double) Byte.SIZE);
     this.data = new byte[bytesNeeded];
+  }
+
+  private UnpaddedIntArray(int size, int maxValue, int bitsPerCell, int cellMask, byte[] data) {
+    this.size = size;
+    this.maxValue = maxValue;
+    this.bitsPerCell = bitsPerCell;
+    this.cellMask = cellMask;
+    this.data = data;
   }
 
   @Override
@@ -117,6 +132,31 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
   public void serialize(OozeDataOutputStream out) throws IOException {
     out.writeVarInt(maxValue);
     out.write(data);
+  }
+
+  /**
+   * Determines whether or not the array must be resized in order to store values up to {@code
+   * newMaxValue}. If resizing is not required, the current instance is returned. Otherwise, a new
+   * instance is created that can store the new max value. This new instance may or may be backed by
+   * the same data source as the original array, in which case modification of either may changed
+   * values in both.
+   */
+  UnpaddedIntArray resizeIfNecessary(int newMaxValue) {
+    int requiredCellSize = bitsNeededToStore(newMaxValue);
+    if (requiredCellSize == bitsPerCell) {
+      if (newMaxValue != maxValue) {
+        return new UnpaddedIntArray(size,
+            Math.max(maxValue, newMaxValue),
+            bitsPerCell,
+            cellMask,
+            data);
+      }
+    } else if (requiredCellSize > bitsPerCell) {
+      UnpaddedIntArray resized = new UnpaddedIntArray(size, newMaxValue);
+      forEach(resized::set);
+      return resized;
+    }
+    return this;
   }
 
   @Override

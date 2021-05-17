@@ -59,6 +59,71 @@ public class BlockPalette implements OozeSerializable, Iterable<BlockState> {
     return stateId;
   }
 
+
+  /**
+   * Same as {@link #removeState(int)}, but {@code stateId} is determined automatically based on the
+   * provided {@code state}.
+   *
+   * @see #removeState(int)
+   */
+  public PaletteUpgrader removeState(BlockState state) {
+    int idToRemove = getStateId(state);
+    if (idToRemove < 0) {
+      return PaletteUpgrader.dummy;
+    }
+    return removeState(idToRemove);
+  }
+
+  /**
+   * Removes a state from the palette if it was already present. This operation may alter the IDs of
+   * other states, so the returned upgrader should be used to update dependent data accordingly.
+   *
+   * @return A tool for applying the changes to any data that uses this palette.
+   */
+  public PaletteUpgrader removeState(int stateId) {
+    if (stateId < 0 || stateId >= registeredStates.size()) {
+      throw new IllegalArgumentException("Palette does not contain state with ID: " + stateId);
+    }
+    registeredStates.remove(stateId);
+
+    if (stateId == registeredStates.size()) {
+      // If the last element is removed, there is nothing to shift.
+      return PaletteUpgrader.dummy;
+    }
+
+    // Shift any IDs after the removed ID down by 1.
+    PaletteUpgrader upgrader = new PaletteUpgrader(registeredStates.size() - stateId);
+    for (int id = stateId; id < registeredStates.size(); id++) {
+      upgrader.registerChange(id + 1, id);
+    }
+    upgrader.lock();
+    return upgrader;
+  }
+
+  /**
+   * Adds all block states from another palette into this one if they are not already present.
+   *
+   * @return A tool for upgrading any data dependent on the {@code otherPalette} to be compatible
+   * with this one.
+   */
+  public PaletteUpgrader addAll(BlockPalette otherPalette) {
+    final PaletteUpgrader upgrader = new PaletteUpgrader(otherPalette.size());
+
+    for (int oldId = 0; oldId < otherPalette.registeredStates.size(); oldId++) {
+      BlockState state = otherPalette.getState(oldId);
+      int newId = getOrAddStateId(state);
+      upgrader.registerChange(oldId, newId);
+    }
+    upgrader.lock();
+
+    return upgrader;
+  }
+
+  // TODO: 5/16/21 Return an upgrade map for pre-flattening data values to modern block states.
+  //  public static PaletteUpgrader getLegacyUpgradeMap() {
+  //    throw new UnsupportedOperationException("Not yet implemented.");
+  //  }
+
   /**
    * @return The number of unique block states stored in the palette.
    */
@@ -95,21 +160,4 @@ public class BlockPalette implements OozeSerializable, Iterable<BlockState> {
     b.append('}');
     return b.toString();
   }
-
-//  public static PaletteUpgrader getLegacyUpgradeMap() {
-//    // Return an upgrade map for pre-flattening data values to modern block states.
-//    throw new UnsupportedOperationException("Not yet implemented.");
-//  }
-//
-//  public PaletteUpgrader removeState(BlockState state) {
-//    registeredStates.remove(state);
-//  }
-//
-//  public PaletteUpgrader removeState(int stateId) {
-//    registeredStates.remove(stateId);
-//  }
-//
-//  public PaletteUpgrader generateUpgradeMap() {
-//    throw new UnsupportedOperationException("Not yet implemented.");
-//  }
 }
