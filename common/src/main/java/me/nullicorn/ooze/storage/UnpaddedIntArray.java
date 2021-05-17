@@ -137,6 +137,8 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
   @Override
   public void serialize(OozeDataOutputStream out) throws IOException {
     out.writeVarInt(maxValue);
+    out.writeVarInt(size);
+    out.writeVarInt(data.length);
     out.write(data);
   }
 
