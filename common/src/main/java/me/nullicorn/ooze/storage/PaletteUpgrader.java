@@ -77,7 +77,13 @@ public class PaletteUpgrader {
       throw new IllegalStateException("Already locked");
     }
 
-    noChanges = Arrays.equals(oldIds, newIds);
+    for (int i = 0; i < nextAvailableIndex; i++) {
+      if (oldIds[i] != newIds[i]) {
+        noChanges = false;
+        break;
+      }
+    }
+
     locked = true;
     return this;
   }
@@ -102,34 +108,22 @@ public class PaletteUpgrader {
   /**
    * Upgrades an {@code array} of state IDs so that any outdated IDs in the array are upgraded to
    * their new values, while unchanged IDs remain the same.
-   * <p>
-   * <strong>WARNING:</strong> This method may cause the original array to be resized, which can
-   * potentially mess up existing instances. Any references to the original array should be updated
-   * to the returned one.
-   *
-   * @return An array of state IDs that respect the changes made by the upgrader. The {@link
-   * UnpaddedIntArray#size() size} of this array is the same as the input array, but the {@link
-   * UnpaddedIntArray#maxValue() maximum value} may have changed. See the warning above.
    */
-  public UnpaddedIntArray upgrade(UnpaddedIntArray array) {
+  public void upgrade(UnpaddedIntArray array) {
     if (noChanges) {
-      return array;
+      return;
     }
 
     int highestId = -1;
-    for (int stateId : newIds) {
+    for (int i = 0; i < nextAvailableIndex; i++) {
+      int stateId = newIds[i];
       if (stateId > highestId) {
         highestId = stateId;
       }
     }
 
-    if (highestId < 0) {
-      throw new IllegalStateException("Missing upgrade data");
-    }
-
-    UnpaddedIntArray upgraded = array.resizeIfNecessary(highestId);
-    upgraded.forEach(((index, value) -> upgraded.set(index, upgrade(value))));
-    return upgraded;
+    array.setMaxValue(highestId);
+    array.forEach(((index, value) -> array.set(index, upgrade(value))));
   }
 
   /**
@@ -137,7 +131,7 @@ public class PaletteUpgrader {
    * -1} if the array does not contain that value.
    */
   private int indexOfOld(int oldId) {
-    for (int i = 0; i < oldIds.length; i++) {
+    for (int i = 0; i < nextAvailableIndex; i++) {
       if (oldIds[i] == oldId) {
         return i;
       }
@@ -159,12 +153,13 @@ public class PaletteUpgrader {
 
     @Override
     public int upgrade(int oldId) {
+      // Do nothing.
       return oldId;
     }
 
     @Override
-    public UnpaddedIntArray upgrade(UnpaddedIntArray array) {
-      return array;
+    public void upgrade(UnpaddedIntArray array) {
+      // Do nothing.
     }
   }
 }

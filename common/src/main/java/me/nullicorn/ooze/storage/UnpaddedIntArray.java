@@ -16,48 +16,12 @@ import me.nullicorn.ooze.serialize.OozeSerializable;
  */
 public class UnpaddedIntArray implements IntArray, OozeSerializable {
 
-  private final byte[] data;
-
-  // Number of "cells" in the array.
-  private final int size;
-
-  /*
-   * The highest value that can be stored in any cell. This value is not a necessarily a technical
-   * limitation, but since it must be provided by the user, we also check against it in #set() to
-   * avoid confusion.
+  /**
+   * Performs the {@link #get(int)} operation on an unpadded int array independent of its {@link
+   * UnpaddedIntArray wrapper} object. This allows new arrays to be read directly, such as when
+   * resizing.
    */
-  private final int maxValue;
-
-  // The length of each cell in bits.
-  private final int bitsPerCell;
-
-  // A mask of [bitsPerCell] set bits.
-  private final int cellMask;
-
-  public UnpaddedIntArray(int size, int maxValue) {
-    this.size = size;
-    this.maxValue = maxValue;
-    this.bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
-    this.cellMask = BitUtils.createBitMask(bitsPerCell);
-
-    int bytesNeeded = (int) Math.ceil(size * bitsPerCell / (double) Byte.SIZE);
-    this.data = new byte[bytesNeeded];
-  }
-
-  private UnpaddedIntArray(int size, int maxValue, int bitsPerCell, int cellMask, byte[] data) {
-    this.size = size;
-    this.maxValue = maxValue;
-    this.bitsPerCell = bitsPerCell;
-    this.cellMask = cellMask;
-    this.data = data;
-  }
-
-  @Override
-  public int get(int index) {
-    if (index < 0 || index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-
+  private static int getInternal(byte[] raw, int bitsPerCell, int cellMask, int index) {
     int bitIndex = index * bitsPerCell;
     int bitOffset = bitIndex % Byte.SIZE;
     int byteIndex = bitIndex / Byte.SIZE;
@@ -67,7 +31,7 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
     int valueMask = cellMask;
 
     while (valueMask != 0) {
-      value |= (((data[byteIndex] & 0xFF) >> bitOffset) & valueMask) << totalBitsRead;
+      value |= (((raw[byteIndex] & 0xFF) >> bitOffset) & valueMask) << totalBitsRead;
 
       int bitsRead = Math.min(Integer.bitCount(valueMask), Byte.SIZE - bitOffset);
       valueMask >>>= bitsRead;
@@ -80,16 +44,12 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
     return value;
   }
 
-  @Override
-  public int set(int index, int value) {
-    if (index < 0 || index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    } else if (value < 0) {
-      throw new IllegalArgumentException("Value is not a positive integer: " + value);
-    } else if (value > maxValue) {
-      throw new IllegalArgumentException("Value is not <= " + maxValue + ": " + value);
-    }
-
+  /**
+   * Performs the {@link #set(int, int)} operation on an unpadded int array independent of its
+   * {@link UnpaddedIntArray wrapper} object. This allows new arrays to be modified directly, such
+   * as when resizing.
+   */
+  private static int setInternal(byte[] raw, int bitsPerCell, int cellMask, int index, int value) {
     int bitIndex = index * bitsPerCell;
     int bitOffset = bitIndex % Byte.SIZE;
     int byteIndex = bitIndex / Byte.SIZE;
@@ -99,11 +59,11 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
     int valueMask = cellMask;
 
     while (valueMask != 0) {
-      // Read previous value.
-      previousValue |= (((data[byteIndex] & 0xFF) >> bitOffset) & valueMask) << totalBitsWritten;
+      // Read previous value from the cell.
+      previousValue |= (((raw[byteIndex] & 0xFF) >> bitOffset) & valueMask) << totalBitsWritten;
 
-      data[byteIndex] &= ~(valueMask << bitOffset); // Clear all bits in the cell.
-      data[byteIndex] |= ((value & valueMask) << bitOffset); // Insert new value into the cell.
+      raw[byteIndex] &= ~(valueMask << bitOffset); // Clear all bits in the cell.
+      raw[byteIndex] |= ((value & valueMask) << bitOffset); // Insert new value into the cell.
 
       int bitsWritten = Math.min(Integer.bitCount(valueMask), Byte.SIZE - bitOffset);
       value >>>= bitsWritten;
@@ -117,6 +77,54 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
     return previousValue;
   }
 
+  private byte[] data;
+
+  // Number of "cells" in the array.
+  private final int size;
+
+  /*
+   * The highest value that can be stored in any cell. This value is not a necessarily a technical
+   * limitation, but since it must be provided by the user, we also check against it in #set() to
+   * avoid confusion.
+   */
+  private int maxValue;
+
+  // The length of each cell in bits.
+  private int bitsPerCell;
+
+  // A mask of [bitsPerCell] set bits.
+  private int cellMask;
+
+  public UnpaddedIntArray(int size, int maxValue) {
+    this.size = size;
+    this.maxValue = maxValue;
+    this.bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
+    this.cellMask = BitUtils.createBitMask(bitsPerCell);
+    this.data = new byte[BitUtils.bitsToBytes(size * bitsPerCell)];
+  }
+
+  @Override
+  public int get(int index) {
+    if (index < 0 || index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+
+    return getInternal(data, bitsPerCell, cellMask, index);
+  }
+
+  @Override
+  public int set(int index, int value) {
+    if (index < 0 || index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    } else if (value < 0) {
+      throw new IllegalArgumentException("Array value is not a positive integer: " + value);
+    } else if (value > maxValue) {
+      throw new IllegalArgumentException("Array value must be <= " + maxValue + ": " + value);
+    }
+
+    return setInternal(data, bitsPerCell, cellMask, index, value);
+  }
+
   @Override
   public int size() {
     return size;
@@ -125,6 +133,33 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
   @Override
   public int maxValue() {
     return maxValue;
+  }
+
+  /**
+   * Changes the maximum allowed value to be inserted into the array. If the {@code newMaxValue} is
+   * less than the previous {@link #maxValue() maxValue}, it is expected that all values in the
+   * array are already less than the new maximum.
+   *
+   * @throws IllegalStateException If the array contains values greater than the new maximum value.
+   */
+  public void setMaxValue(int newMaxValue) {
+    if (newMaxValue == maxValue) {
+      return;
+    } else if (BitUtils.bitsNeededToStore(newMaxValue) > bitsPerCell) {
+      // Resize required to store higher values.
+      resize(newMaxValue);
+    } else {
+      // Ensure no existing values are out of bounds.
+      for (int i = 0; i < size; i++) {
+        int value = get(i);
+        if (value > newMaxValue) {
+          throw new IllegalStateException(
+              "Cannot downsize array containing values greater than the new maximum, "
+              + newMaxValue + ": " + value);
+        }
+      }
+    }
+    maxValue = newMaxValue;
   }
 
   @Override
@@ -136,35 +171,48 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
 
   @Override
   public void serialize(OozeDataOutputStream out) throws IOException {
+    if (BitUtils.bitsNeededToStore(maxValue) < bitsPerCell) {
+      // Ensure serialized form is as compact as possible.
+      resize(maxValue);
+    }
+
     out.writeVarInt(maxValue);
     out.writeVarInt(size);
-    out.writeVarInt(data.length);
     out.write(data);
   }
 
   /**
-   * Determines whether or not the array must be resized in order to store values up to {@code
-   * newMaxValue}. If resizing is not required, the current instance is returned. Otherwise, a new
-   * instance is created that can store the new max value. This new instance may or may be backed by
-   * the same data source as the original array, in which case modification of either may changed
-   * values in both.
+   * Changes the size of the internal array so that is only as large as is needed to store values up
+   * to {@code newMaxValue}. If this change causes the size to decrease, it is expected that the
+   * array does not contain any values higher than the new maximum.
+   * <p>
+   * This method does not change the array's {@link #maxValue}, which must be done separately if
+   * needed.
+   *
+   * @throws IllegalStateException If the array contains any values larger than {@code
+   *                               newMaxValue}.
    */
-  UnpaddedIntArray resizeIfNecessary(int newMaxValue) {
-    int requiredCellSize = BitUtils.bitsNeededToStore(newMaxValue);
-    if (requiredCellSize == bitsPerCell) {
-      if (newMaxValue != maxValue) {
-        return new UnpaddedIntArray(size,
-            Math.max(maxValue, newMaxValue),
-            bitsPerCell,
-            cellMask,
-            data);
-      }
-    } else if (requiredCellSize > bitsPerCell) {
-      UnpaddedIntArray resized = new UnpaddedIntArray(size, newMaxValue);
-      forEach(resized::set);
-      return resized;
+  private void resize(int newMaxValue) {
+    int newBitsPerCell = BitUtils.bitsNeededToStore(newMaxValue);
+    int newCellMask = BitUtils.createBitMask(newBitsPerCell);
+    if (newBitsPerCell == bitsPerCell) {
+      // Resizing wouldn't change anything.
+      return;
     }
-    return this;
+
+    byte[] newData = new byte[BitUtils.bitsToBytes(size * newBitsPerCell)];
+    for (int i = 0; i < size; i++) {
+      int value = get(i);
+      if (value > newMaxValue) {
+        throw new IllegalStateException("Source array contains values larger than new maximum (" +
+                                        newMaxValue + "): " + value);
+      }
+      setInternal(newData, newBitsPerCell, newCellMask, i, value);
+    }
+
+    data = newData;
+    bitsPerCell = newBitsPerCell;
+    cellMask = newCellMask;
   }
 
   @Override

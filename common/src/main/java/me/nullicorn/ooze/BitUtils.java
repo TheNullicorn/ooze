@@ -21,6 +21,13 @@ public final class BitUtils {
     return (1 << width) - 1;
   }
 
+  /**
+   * @return The number of bytes needed to store {@code bitCount} bits.
+   */
+  public static int bitsToBytes(int bitCount) {
+    return (int) Math.ceil(bitCount / (double) Byte.SIZE);
+  }
+
   private BitUtils() {
     throw new UnsupportedOperationException("BitUtils should not be instantiated");
   }
