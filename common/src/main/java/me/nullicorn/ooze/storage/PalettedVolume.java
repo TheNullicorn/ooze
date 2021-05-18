@@ -8,7 +8,7 @@ import me.nullicorn.ooze.world.BlockState;
  * block's position with its state.
  * <p>
  * <strong>WARNING:</strong> Direct modification of either the {@link #getPalette() palette} or
- * {@link #getStorage() storage container} may cause unwaned side effects for the volume as a
+ * {@link #getStorage() storage container} may cause unwanted side effects for the volume as a
  * whole.
  *
  * @author Nullicorn
