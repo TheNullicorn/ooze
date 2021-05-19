@@ -1,11 +1,15 @@
 package me.nullicorn.ooze.convert.region;
 
 import java.io.ByteArrayInputStream;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.zip.InflaterInputStream;
 import lombok.Getter;
 import me.nullicorn.nedit.NBTReader;
@@ -18,14 +22,21 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author Nullicorn
  */
-public class RegionFile {
+public class RegionFile implements Closeable {
+
+  private static final int LOCATION_TABLE_LENGTH = 4096;
 
   // Region files are divided into 4KiB sectors
   private static final int SECTOR_LENGTH = 4096;
 
   @Getter
-  private final File   source;
-  private       byte[] contents;
+  private final File source;
+
+  @Nullable
+  private FileChannel channel;
+
+  @Nullable
+  private byte[] locationTable;
 
   public RegionFile(File source) {
     this.source = source;
@@ -52,37 +63,34 @@ public class RegionFile {
    */
   @Nullable
   public NBTCompound readChunkData(int chunkX, int chunkZ) throws IOException {
-    if (contents == null) {
-      reload();
-    }
+    open();
 
-    int chunkXOffset = chunkX % 32;
-    int chunkZOffset = chunkZ % 32;
-    if (chunkXOffset < 0) {
-      chunkXOffset += 32;
-    }
-    if (chunkZOffset < 0) {
-      chunkZOffset += 32;
+    if (channel == null || locationTable == null) {
+      throw new IllegalStateException("Cannot read chunks while file is closed.");
     }
 
     // Get chunk info from location table.
-    int index = (chunkXOffset + chunkZOffset * 32) * 4;
-    int sectorOffset = ((contents[index] & 0xFF) << 16)
-                       | ((contents[index + 1] & 0xFF) << 8)
-                       | (contents[index + 2] & 0xFF);
-    int sectorCount = contents[index + 3] & 0xFF;
+    int index = (chunkX & 31 | (chunkZ & 31) << 5) << 2;
+    int sectorOffset = ((locationTable[index] & 0xFF) << 16)
+                       | ((locationTable[index + 1] & 0xFF) << 8)
+                       | (locationTable[index + 2] & 0xFF);
+    int sectorCount = locationTable[index + 3] & 0xFF;
 
     if (sectorCount == 0) {
       // Chunk has no data.
       return null;
     }
 
-    int chunkStart = SECTOR_LENGTH * sectorOffset;
-    int chunkLength = ((contents[chunkStart] & 0xFF) << 24)
-                      | ((contents[chunkStart + 1] & 0xFF) << 16)
-                      | ((contents[chunkStart + 2] & 0xFF) << 8)
-                      | (contents[chunkStart + 3] & 0xFF);
-    int compressionType = contents[chunkStart + 4] & 0xFF;
+    ByteBuffer chunkDataBuf = ByteBuffer.allocate(sectorCount * SECTOR_LENGTH);
+    channel.position(sectorOffset * (long) SECTOR_LENGTH);
+    channel.read(chunkDataBuf);
+    byte[] chunkData = chunkDataBuf.array();
+
+    int chunkLength = ((chunkData[0] & 0xFF) << 24)
+                      | ((chunkData[1] & 0xFF) << 16)
+                      | ((chunkData[2] & 0xFF) << 8)
+                      | (chunkData[3] & 0xFF);
+    int compressionType = chunkData[4] & 0xFF;
 
     if (chunkLength < 1) {
       // Shouldn't happen, but just to be safe.
@@ -95,30 +103,42 @@ public class RegionFile {
     if (isExternal) {
       return readExternalChunkData(chunkX, chunkZ, compressionType);
     } else if (chunkLength < 2) {
-      // Also shouldn't happen (if a chunk isn't external, data __should__ be present).
+      // Also shouldn't happen; if a chunk isn't external, data should be present.
       return null;
     }
 
-    return deserializeChunkData(contents, chunkStart + 5, chunkLength - 1, compressionType);
+    return deserializeChunkData(chunkData, 5, chunkLength - 1, compressionType);
   }
 
   /**
-   * Reloads the contents of the region file from disk.
+   * Opens the contents of the region file, reading enough information so that future chunks can be
+   * properly read from it.
    *
-   * @throws IOException If the file could not be found or read.
+   * @throws IOException If the file could not be found, opened, or read.
    */
-  public void reload() throws IOException {
+  public void open() throws IOException {
+    if (channel != null && channel.isOpen()) {
+      return;
+    }
+
     if (!source.isFile()) {
       throw new FileNotFoundException("Region " + source + " is not a file");
     }
 
-    contents = Files.readAllBytes(source.toPath());
-    int contentLength = contents.length;
-    if (contentLength % SECTOR_LENGTH != 0) {
-      contents = null;
-      throw new IOException("Region file " + source +
-                            " is not a valid size (" + contentLength + " bytes)");
+    ByteBuffer locationsBuf = ByteBuffer.allocate(LOCATION_TABLE_LENGTH);
+    channel = FileChannel.open(source.toPath(), StandardOpenOption.READ);
+    channel.read(locationsBuf);
+    locationTable = locationsBuf.array();
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (channel == null) {
+      return;
     }
+
+    channel.close();
+    channel = null;
   }
 
   /**

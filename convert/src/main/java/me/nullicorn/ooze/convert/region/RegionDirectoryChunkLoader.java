@@ -1,6 +1,7 @@
 package me.nullicorn.ooze.convert.region;
 
 import java.io.ByteArrayInputStream;
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -16,7 +17,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author Nullicorn
  */
-public class RegionDirectoryChunkLoader {
+public class RegionDirectoryChunkLoader implements Closeable {
 
   private final File                        directory;
   private final Map<Location2D, RegionFile> loadedRegions;
@@ -33,10 +34,30 @@ public class RegionDirectoryChunkLoader {
 
   /**
    * Reset this chunk loader to its initial state, potentially freeing up memory.
+   *
+   * @throws IOException If any region threw an IO exception while being unloaded. If multiple do,
+   *                     the first one is thrown.
    */
-  public void reset() {
+  public void reset() throws IOException {
+    IOException thrownInLoop = null;
+
+    for (RegionFile region : loadedRegions.values()) {
+      try {
+        region.close();
+      } catch (IOException exception) {
+        // Ensure that the channels used by subsequent regions get closed.
+        if (thrownInLoop == null) {
+          thrownInLoop = exception;
+        }
+      }
+    }
+
     // Clear the region file cache.
     loadedRegions.clear();
+
+    if (thrownInLoop != null) {
+      throw thrownInLoop;
+    }
   }
 
   /**
@@ -88,6 +109,7 @@ public class RegionDirectoryChunkLoader {
    * @throws IOException If the region file could not be read.
    */
   @Nullable
+  @SuppressWarnings("java:S2095")
   private RegionFile loadRegion(Location2D regionLocation) throws IOException {
     File regionFile = new File(directory, LevelFileType.ANVIL.getFileName(regionLocation));
     if (!regionFile.isFile()) {
@@ -100,7 +122,7 @@ public class RegionDirectoryChunkLoader {
 
     // Load & cache the region.
     RegionFile region = new RegionFile(regionFile);
-    region.reload();
+    region.open();
     loadedRegions.put(regionLocation, region);
 
     return region;
@@ -124,5 +146,10 @@ public class RegionDirectoryChunkLoader {
     }
 
     return null;
+  }
+
+  @Override
+  public void close() throws IOException {
+    reset();
   }
 }
