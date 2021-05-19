@@ -3,8 +3,7 @@ package me.nullicorn.ooze.storage;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import me.nullicorn.ooze.serialize.OozeDataOutputStream;
-import me.nullicorn.ooze.serialize.OozeSerializable;
+import lombok.Getter;
 import me.nullicorn.ooze.world.BlockState;
 import org.jetbrains.annotations.NotNull;
 
@@ -18,12 +17,33 @@ import org.jetbrains.annotations.NotNull;
  *
  * @author Nullicorn
  */
-public class BlockPalette implements OozeSerializable, Iterable<BlockState> {
+public class BlockPalette implements Iterable<BlockState> {
 
   private final List<BlockState> registeredStates;
 
+  /**
+   * The block state that volumes using this palette can fall-back to if a block's state is not
+   * specified. This state's ID can be quickly accessed via {@link #getDefaultStateId()}.
+   */
+  @Getter
+  private final BlockState defaultState;
+
+  /**
+   * The ID of the palette's {@link #getDefaultState() default state}.
+   */
+  @Getter
+  private final int defaultStateId;
+
   public BlockPalette() {
+    this(BlockState.DEFAULT);
+  }
+
+  public BlockPalette(BlockState defaultState) {
     this.registeredStates = new ArrayList<>();
+    this.defaultState = defaultState;
+    defaultStateId = 0;
+
+    registeredStates.add(defaultState);
   }
 
   /**
@@ -64,6 +84,8 @@ public class BlockPalette implements OozeSerializable, Iterable<BlockState> {
    * Same as {@link #removeState(int)}, but {@code stateId} is determined automatically based on the
    * provided {@code state}.
    *
+   * @throws IllegalArgumentException If the requested state is the {@link #getDefaultState()
+   *                                  default state} for the palette.
    * @see #removeState(int)
    */
   public PaletteUpgrader removeState(BlockState state) {
@@ -77,15 +99,22 @@ public class BlockPalette implements OozeSerializable, Iterable<BlockState> {
   /**
    * Removes a state from the palette if it was already present. This operation may alter the IDs of
    * other states, so the returned upgrader should be used to update dependent data accordingly.
+   * This method cannot be used to remove the palette's {@link #defaultState default state}.
    *
    * @return A tool for applying the changes to any data that uses this palette.
+   * @throws IllegalArgumentException If the requested state is the {@link #getDefaultState()
+   *                                  default state} for the palette.
    */
   public PaletteUpgrader removeState(int stateId) {
-    if (stateId < 0 || stateId >= registeredStates.size()) {
-      throw new IllegalArgumentException("Palette does not contain state with ID: " + stateId);
+    if (stateId == defaultStateId) {
+      throw new IllegalStateException("Cannot remove the default state from a palette: " +
+                                      defaultState);
+    } else if (stateId < 0 || stateId >= registeredStates.size()) {
+      // State does not exist.
+      return PaletteUpgrader.dummy;
     }
-    registeredStates.remove(stateId);
 
+    registeredStates.remove(stateId);
     if (stateId == registeredStates.size()) {
       // If the last element is removed, there is nothing to shift.
       return PaletteUpgrader.dummy;
@@ -119,22 +148,11 @@ public class BlockPalette implements OozeSerializable, Iterable<BlockState> {
     return upgrader;
   }
 
-  // TODO: 5/16/21 Return an upgrade map for pre-flattening data values to modern block states.
-  //  public static PaletteUpgrader getLegacyUpgradeMap() {
-  //    throw new UnsupportedOperationException("Not yet implemented.");
-  //  }
-
   /**
    * @return The number of unique block states stored in the palette.
    */
   public int size() {
     return registeredStates.size();
-  }
-
-  @Override
-  public void serialize(OozeDataOutputStream out) {
-    // TODO: 5/16/21 Add serialization for BlockPalette.
-    throw new UnsupportedOperationException("Not yet implemented");
   }
 
   @NotNull
