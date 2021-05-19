@@ -28,6 +28,15 @@ public class OozeDataOutputStream extends DataOutputStream {
   }
 
   /**
+   * Serializes the provided object to the underlying output stream.
+   *
+   * @throws IOException If the object could not be serialized or written.
+   */
+  public void write(OozeSerializable obj) throws IOException {
+    obj.serialize(this);
+  }
+
+  /**
    * Writes a variable-length, LEB128-encoded integer to the underlying output stream.
    *
    * @throws IOException If the number could not be written.
@@ -43,8 +52,31 @@ public class OozeDataOutputStream extends DataOutputStream {
       if (value != 0) {
         temp |= 0x80;
       }
-      out.write(temp);
+      write(temp);
     } while (value != 0);
+  }
+
+  /**
+   * Writes an uncompressed NBT compound to the underlying output stream. The NBT data is prefixed
+   * by its length in bytes as a LEB128 integer.
+   *
+   * @param wrap Whether or not the provided compound should be wrapped in an unnamed compound
+   *             before serializing.
+   * @throws IOException If the compound cannot be serialized or written.
+   */
+  public void writeNBT(NBTCompound compound, boolean wrap) throws IOException {
+    if (wrap) {
+      NBTCompound wrapper = new NBTCompound();
+      wrapper.put("", compound);
+      compound = wrapper;
+    }
+
+    ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
+    NBTWriter.write(compound, bytesOut, false);
+
+    byte[] nbtBytes = bytesOut.toByteArray();
+    writeVarInt(nbtBytes.length);
+    write(nbtBytes);
   }
 
   /**

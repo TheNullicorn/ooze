@@ -1,11 +1,11 @@
 package me.nullicorn.ooze.storage;
 
+import me.nullicorn.ooze.BlockVolume;
 import me.nullicorn.ooze.serialize.IntArray;
-import me.nullicorn.ooze.world.BlockState;
 
 /**
- * A three-dimensional area of blocks that uses a {@link BlockPalette palette} to associate each
- * block's position with its state.
+ * A volume of blocks that uses a {@link BlockPalette palette} to associate each block's position
+ * with its state.
  * <p>
  * <strong>WARNING:</strong> Direct modification of either the {@link #getPalette() palette} or
  * {@link #getStorage() storage container} may cause unwanted side effects for the volume as a
@@ -13,7 +13,7 @@ import me.nullicorn.ooze.world.BlockState;
  *
  * @author Nullicorn
  */
-public interface PalettedVolume<P extends BlockPalette, S extends IntArray> {
+public interface PalettedVolume<P extends BlockPalette, S extends IntArray> extends BlockVolume {
 
   /**
    * @return The palette of blocks used by this volume.
@@ -27,48 +27,8 @@ public interface PalettedVolume<P extends BlockPalette, S extends IntArray> {
   S getStorage();
 
   /**
-   * @return The lowest x-coordinate that any block in the volume may have.
+   * @return Whether or not all blocks in the volume are set to its palette's {@link
+   * BlockPalette#getDefaultState() default state}.
    */
-  int getMinX();
-
-  /**
-   * @return The lowest y-coordinate that any block in the volume may have.
-   */
-  int getMinY();
-
-  /**
-   * @return The lowest z-coordinate that any block in the volume may have.
-   */
-  int getMinZ();
-
-  /**
-   * @return The size of the volume along the x-axis, in blocks.
-   */
-  int getWidth();
-
-  /**
-   * @return The size of the volume along the y-axis, in blocks.
-   */
-  int getHeight();
-
-  /**
-   * @return The size of the volume along the z-axis, in blocks.
-   */
-  int getDepth();
-
-  /**
-   * @return The state of the block at the provided coordinates.
-   * @throws IndexOutOfBoundsException If the provided coordinates are outside the bounds of this
-   *                                   volume.
-   */
-  BlockState getBlockAt(int x, int y, int z);
-
-  /**
-   * Changes the state of the block at a given position.
-   *
-   * @return The block state that was previously set at those coordinates.
-   * @throws IndexOutOfBoundsException If the provided coordinates are outside the bounds of this
-   *                                   volume.
-   */
-  BlockState setBlockAt(int x, int y, int z, BlockState state);
+  boolean isEmpty();
 }

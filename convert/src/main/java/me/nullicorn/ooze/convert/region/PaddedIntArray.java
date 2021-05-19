@@ -3,8 +3,8 @@ package me.nullicorn.ooze.convert.region;
 import java.util.Arrays;
 import java.util.Objects;
 import me.nullicorn.ooze.BitUtils;
-import me.nullicorn.ooze.serialize.IntArray;
 import me.nullicorn.ooze.storage.UnpaddedIntArray;
+import me.nullicorn.ooze.serialize.IntArray;
 
 /**
  * A compact format for storing many integers with a known limit. Used by Minecraft to store block
@@ -12,36 +12,26 @@ import me.nullicorn.ooze.storage.UnpaddedIntArray;
  *
  * @author Nullicorn
  */
-public class CompactDataArray implements IntArray {
+public class PaddedIntArray implements IntArray {
 
   private static final int BITS_PER_WORD = Long.SIZE;
 
   /**
-   * @return The number of words needed to store {@code size} values that can be at most {@code
-   * maxValue}.
-   */
-  private static int wordsNeeded(int size, int maxValue) {
-    int bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
-    int cellsPerWord = BITS_PER_WORD / bitsPerCell;
-    return (int) Math.ceil(size / (double) cellsPerWord);
-  }
-
-  /**
-   * Constructs a data array using existing data.
+   * Reads a padded array of integers from its {@link #toRaw() raw format}.
    *
    * @param size     The number of compact elements in the source array; usually larger than the
    *                 array's actual length.
    * @param isPadded Whether or not values within the {@code source} array can span across multiple
    *                 longs.
    * @param maxValue The highest value that can be stored at any index in the compact array.
+   * @see #toRaw()
    */
-  public static CompactDataArray fromLongArray(long[] source, int size, int maxValue,
-      boolean isPadded) {
+  public static PaddedIntArray fromRaw(long[] source, int size, int maxValue, boolean isPadded) {
     if (isPadded) {
       // Data should already be formatted properly.
-      return new CompactDataArray(size, maxValue, source);
+      return new PaddedIntArray(size, maxValue, source);
     } else {
-      CompactDataArray array = new CompactDataArray(size, maxValue);
+      PaddedIntArray array = new PaddedIntArray(size, maxValue);
 
       // Extract values from unpadded format.
       int bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
@@ -65,6 +55,16 @@ public class CompactDataArray implements IntArray {
 
       return array;
     }
+  }
+
+  /**
+   * @return The number of words needed to store {@code size} values that can be at most {@code
+   * maxValue}.
+   */
+  private static int wordsNeeded(int size, int maxValue) {
+    int bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
+    int cellsPerWord = BITS_PER_WORD / bitsPerCell;
+    return (int) Math.ceil(size / (double) cellsPerWord);
   }
 
   // Internal storage for compact values. Each "word" contains multiple "cells" with values.
@@ -93,11 +93,11 @@ public class CompactDataArray implements IntArray {
   // A bitmask with the least significant <bitsPerCell> bits set.
   private final long cellMask;
 
-  public CompactDataArray(int size, int maxValue) {
+  public PaddedIntArray(int size, int maxValue) {
     this(size, maxValue, new long[wordsNeeded(size, maxValue)]);
   }
 
-  private CompactDataArray(int size, int maxValue, long[] words) {
+  private PaddedIntArray(int size, int maxValue, long[] words) {
     if (size < 0) {
       throw new IllegalArgumentException("Illegal array size: " + size);
     } else if (maxValue < 0) {
@@ -197,6 +197,18 @@ public class CompactDataArray implements IntArray {
     return bitsPerCell * (cellIndex % cellsPerWord);
   }
 
+  /**
+   * Converts the array to its simplest form, such that it can be reconstructed via {@link
+   * #fromRaw(long[], int, int, boolean)}. Indices in the returned array will no longer correspond
+   * to the appropriate value, and the returned array may be a different length than the actual
+   * array.
+   *
+   * @see #fromRaw(long[], int, int, boolean)
+   */
+  public long[] toRaw() {
+    return Arrays.copyOf(words, words.length);
+  }
+
   @Override
   public String toString() {
     if (size == 0) {
@@ -225,7 +237,7 @@ public class CompactDataArray implements IntArray {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    CompactDataArray that = (CompactDataArray) o;
+    PaddedIntArray that = (PaddedIntArray) o;
     return size == that.size &&
            maxValue == that.maxValue &&
            Arrays.equals(words, that.words);

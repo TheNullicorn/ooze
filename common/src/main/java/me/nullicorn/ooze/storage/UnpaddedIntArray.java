@@ -176,8 +176,6 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
       resize(maxValue);
     }
 
-    out.writeVarInt(maxValue);
-    out.writeVarInt(size);
     out.write(data);
   }
 
