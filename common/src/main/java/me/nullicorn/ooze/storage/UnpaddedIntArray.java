@@ -153,9 +153,9 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
       for (int i = 0; i < size; i++) {
         int value = get(i);
         if (value > newMaxValue) {
-          throw new IllegalStateException(
-              "Cannot downsize array containing values greater than the new maximum, "
-              + newMaxValue + ": " + value);
+          throw new IllegalStateException("Cannot change maximum value to " + newMaxValue +
+                                          " while array contains value " + value +
+                                          " at index " + i);
         }
       }
     }
