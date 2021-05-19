@@ -122,8 +122,19 @@ public class PaletteUpgrader {
       }
     }
 
-    array.setMaxValue(highestId);
+    int currentMax = array.maxValue();
+    if (highestId > currentMax) {
+      // Increase the array's size beforehand so it can hold the new highest ID.
+      array.setMaxValue(highestId);
+    }
+
     array.forEach(((index, value) -> array.set(index, upgrade(value))));
+
+    if (upgrade(currentMax) < currentMax) {
+      // Downsize the array to remove unnecessary extra range.
+      // Won't happen if the array was already scaled up before the conversion.
+      array.setMaxValue(highestId);
+    }
   }
 
   /**
