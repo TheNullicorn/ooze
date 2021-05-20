@@ -60,7 +60,10 @@ public class PaletteUpgrader {
       throw new IndexOutOfBoundsException("Invalid palette state ID: " + newId);
     }
 
-    int index = nextAvailableIndex++;
+    int index = indexOfOld(oldId);
+    if (index == -1) {
+      index = nextAvailableIndex++;
+    }
     oldIds[index] = oldId;
     newIds[index] = newId;
     return this;
