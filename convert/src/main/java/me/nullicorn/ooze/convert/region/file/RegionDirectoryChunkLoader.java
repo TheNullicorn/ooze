@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.convert.region;
+package me.nullicorn.ooze.convert.region.file;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
@@ -38,6 +38,7 @@ public class RegionDirectoryChunkLoader implements Closeable {
    * @throws IOException If any region threw an IO exception while being unloaded. If multiple do,
    *                     the first one is thrown.
    */
+  @SuppressWarnings("java:S2583")
   public void reset() throws IOException {
     IOException thrownInLoop = null;
 

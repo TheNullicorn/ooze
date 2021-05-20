@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.convert.region.level;
+package me.nullicorn.ooze.convert.region.world;
 
 import lombok.Getter;
 import me.nullicorn.ooze.convert.region.PaddedIntArray;

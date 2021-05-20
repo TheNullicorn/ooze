@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.convert.region.level;
+package me.nullicorn.ooze.convert.region.world;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -6,14 +6,14 @@ import java.util.BitSet;
 import java.util.List;
 import lombok.Getter;
 import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.storage.UnpaddedIntArray;
 import me.nullicorn.ooze.serialize.OozeDataOutputStream;
 import me.nullicorn.ooze.storage.BlockPalette;
+import me.nullicorn.ooze.storage.UnpaddedIntArray;
 import me.nullicorn.ooze.world.BlockState;
 import me.nullicorn.ooze.world.Chunk;
 
 /**
- * A chunk stored by Minecraft in a {@link me.nullicorn.ooze.convert.region.RegionFile region
+ * A chunk stored by Minecraft in a {@link me.nullicorn.ooze.convert.region.file.RegionFile region
  * file}.
  *
  * @author Nullicorn

@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.convert.region;
+package me.nullicorn.ooze.convert.region.file;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
