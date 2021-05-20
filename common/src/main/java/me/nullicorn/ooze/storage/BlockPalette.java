@@ -1,6 +1,7 @@
 package me.nullicorn.ooze.storage;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
 import lombok.Getter;
@@ -51,6 +52,9 @@ public class BlockPalette implements Iterable<BlockState> {
    * @see #getStateId(BlockState)
    */
   public BlockState getState(int stateId) {
+    if (stateId < 0 || stateId >= registeredStates.size()) {
+      return defaultState;
+    }
     return registeredStates.get(stateId);
   }
 
@@ -146,6 +150,58 @@ public class BlockPalette implements Iterable<BlockState> {
     upgrader.lock();
 
     return upgrader;
+  }
+
+  /**
+   * Creates a new palette that only contains the states whose IDs are used by the {@code data}
+   * array. The only exception is the {@link #getDefaultState() default state}, which is always
+   * copied first to the new palette, even if it is never used.
+   * <p>
+   * The {@code data} array is also upgraded to use the corresponding state IDs in the new palette.
+   *
+   * <p>
+   * Example:
+   * <pre>
+   *   Original-----
+   *   Palette: {0: {Name:"minecraft:air"}, 1: {Name:"minecraft:bedrock"}, 2: {Name:"minecraft:granite"}, 3: {Name:"minecraft:stone"}}
+   *   Data:    [3, 3, 3, 3, 2, 3, 2, 2, 2, 3]
+   *
+   *   Extracted----
+   *   Palette: {0: {Name:"minecraft:air"}, 1: {Name:"minecraft:granite"}, 2: {Name:"minecraft:stone"}}
+   *   Data:    [2, 2, 2, 2, 1, 2, 1, 1, 1, 2]
+   * </pre>
+   * Note that "air" is included in the extracted palette despite not being used. This is because it
+   * is the default block state in the original palette.
+   */
+  public BlockPalette extract(UnpaddedIntArray data) {
+    int maxState = registeredStates.size();
+    BitSet usedStates = new BitSet(maxState + 1);
+
+    // Determine which states are being used by the data array.
+    for (int stateIndex = 0; stateIndex < data.size(); stateIndex++) {
+      int stateId = data.get(stateIndex);
+      if (stateId <= maxState) {
+        usedStates.set(stateId);
+      }
+    }
+
+    // Create a new palette containing only the used states.
+    BlockPalette extracted = new BlockPalette(defaultState);
+    PaletteUpgrader upgrader = new PaletteUpgrader(usedStates.cardinality());
+    for (int stateId = 0; stateId < usedStates.length(); stateId++) {
+      if (usedStates.get(stateId)) {
+        BlockState state = getState(stateId);
+        if (state != null) {
+          // Changes instances of the old ID to its new ID in the extracted palette.
+          int newId = extracted.getOrAddStateId(state);
+          upgrader.registerChange(stateId, newId);
+        }
+      }
+    }
+    upgrader.lock();
+
+    upgrader.upgrade(data);
+    return extracted;
   }
 
   /**
