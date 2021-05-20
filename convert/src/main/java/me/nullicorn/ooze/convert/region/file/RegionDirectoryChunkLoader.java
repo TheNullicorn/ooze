@@ -1,7 +1,6 @@
 package me.nullicorn.ooze.convert.region.file;
 
 import java.io.ByteArrayInputStream;
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,7 +16,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author Nullicorn
  */
-public class RegionDirectoryChunkLoader implements Closeable {
+public class RegionDirectoryChunkLoader implements ChunkSource {
 
   private final File                        directory;
   private final Map<Location2D, RegionFile> loadedRegions;
@@ -61,25 +60,13 @@ public class RegionDirectoryChunkLoader implements Closeable {
     }
   }
 
-  /**
-   * Same as {@link #loadChunk(int, int)}, but with {@code chunkX} and {@code chunkZ} provided via a
-   * {@link Location2D}.
-   *
-   * @see #loadChunk(int, int)
-   */
+  @Override
   @Nullable
   public NBTCompound loadChunk(Location2D chunkLocation) throws IOException {
     return loadChunk(chunkLocation.getX(), chunkLocation.getZ());
   }
 
-  /**
-   * Loads the NBT data for a chunk at a given pair of coordinates.
-   *
-   * @param chunkX The x-coordinate of the chunk.
-   * @param chunkZ The z-coordinate of the chunk.
-   * @return The serialized chunk data, or null if none exists for that chunk.
-   * @throws IOException If the chunk's file could not be read or the chunk data was corrupted.
-   */
+  @Override
   @Nullable
   public NBTCompound loadChunk(int chunkX, int chunkZ) throws IOException {
     Location2D regionLocation = new Location2D(
@@ -89,13 +76,13 @@ public class RegionDirectoryChunkLoader implements Closeable {
     // Use cached region.
     RegionFile region = loadedRegions.get(regionLocation);
     if (region != null) {
-      return region.readChunkData(chunkX, chunkZ);
+      return region.loadChunk(chunkX, chunkZ);
     }
 
     // Load a new region.
     region = loadRegion(regionLocation);
     if (region != null) {
-      return region.readChunkData(chunkX, chunkZ);
+      return region.loadChunk(chunkX, chunkZ);
     }
 
     // Attempt to load this chunk from an external file.

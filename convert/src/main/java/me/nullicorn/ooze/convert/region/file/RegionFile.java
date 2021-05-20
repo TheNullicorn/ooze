@@ -1,7 +1,6 @@
 package me.nullicorn.ooze.convert.region.file;
 
 import java.io.ByteArrayInputStream;
-import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -14,7 +13,6 @@ import java.util.zip.InflaterInputStream;
 import lombok.Getter;
 import me.nullicorn.nedit.NBTReader;
 import me.nullicorn.nedit.type.NBTCompound;
-import me.nullicorn.ooze.Location2D;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -22,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author Nullicorn
  */
-public class RegionFile implements Closeable {
+public class RegionFile implements ChunkSource {
 
   private static final int LOCATION_TABLE_LENGTH = 4096;
 
@@ -42,27 +40,8 @@ public class RegionFile implements Closeable {
     this.source = source;
   }
 
-  /**
-   * Same as {@link #readChunkData(int, int)}, but with {@code chunkX} and {@code chunkZ} provided
-   * via a {@link Location2D}.
-   *
-   * @see #readChunkData(int, int)
-   */
   @Nullable
-  public NBTCompound readChunkData(Location2D chunkLocation) throws IOException {
-    return readChunkData(chunkLocation.getX(), chunkLocation.getZ());
-  }
-
-  /**
-   * Reads & serializes the data for a chunk in the region.
-   *
-   * @param chunkX The x-coordinate of the desired chunk.
-   * @param chunkZ The z-coordinate of the desired chunk.
-   * @return The serialized chunk, or null if it could not be read.
-   * @throws IOException If the region file or any part of it could not be read or serialized.
-   */
-  @Nullable
-  public NBTCompound readChunkData(int chunkX, int chunkZ) throws IOException {
+  public NBTCompound loadChunk(int chunkX, int chunkZ) throws IOException {
     open();
 
     if (channel == null || locationTable == null) {
