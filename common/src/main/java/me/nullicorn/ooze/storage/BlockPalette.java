@@ -61,20 +61,19 @@ public class BlockPalette implements Iterable<BlockState> {
   /**
    * @return The integer used to identify the {@code state} in the palette, or {@code -1} if the
    * palette does not contain that state.
-   * @see #getOrAddStateId(BlockState)
+   * @see #addState(BlockState)
    */
   public int getStateId(BlockState state) {
     return registeredStates.indexOf(state);
   }
 
   /**
-   * Same as {@link #getStateId(BlockState)}, but the {@code state} is automatically added if the
-   * palette does not already contain it. If that happens, the returned value is the new identifier
-   * created for the state.
+   * Adds a state if it was not already in the palette.
    *
-   * @return The integer used to identify the {@code state} in the palette.
+   * @return The new integer used to identify the {@code state} in the palette. If the palette
+   * already contained the state, this is the existing ID used by that state.
    */
-  public int getOrAddStateId(BlockState state) {
+  public int addState(BlockState state) {
     int stateId = registeredStates.indexOf(state);
     if (stateId < 0) {
       registeredStates.add(state);
@@ -144,7 +143,7 @@ public class BlockPalette implements Iterable<BlockState> {
 
     for (int oldId = 0; oldId < otherPalette.registeredStates.size(); oldId++) {
       BlockState state = otherPalette.getState(oldId);
-      int newId = getOrAddStateId(state);
+      int newId = addState(state);
       upgrader.registerChange(oldId, newId);
     }
     upgrader.lock();
@@ -193,7 +192,7 @@ public class BlockPalette implements Iterable<BlockState> {
         BlockState state = getState(stateId);
         if (state != null) {
           // Changes instances of the old ID to its new ID in the extracted palette.
-          int newId = extracted.getOrAddStateId(state);
+          int newId = extracted.addState(state);
           upgrader.registerChange(stateId, newId);
         }
       }

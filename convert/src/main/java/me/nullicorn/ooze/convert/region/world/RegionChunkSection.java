@@ -92,7 +92,7 @@ public class RegionChunkSection implements PalettedVolume<BlockPalette, PaddedIn
 
   @Override
   public BlockState setBlockAt(int x, int y, int z, BlockState state) {
-    int stateId = palette.getOrAddStateId(state);
+    int stateId = palette.addState(state);
     BlockState previousState = palette.getState(storage.set(getBlockIndex(x, y, z), stateId));
 
     if (stateId != palette.getDefaultStateId()) {
