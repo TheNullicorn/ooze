@@ -93,6 +93,10 @@ public class PaletteUpgrader {
    * state has not changed, the {@code oldId} is returned as-is.
    */
   public int upgrade(int oldId) {
+    if (!locked) {
+      throw new IllegalArgumentException("Upgrader must be locked before upgrading.");
+    }
+
     if (noChanges) {
       return oldId;
     }
@@ -110,10 +114,15 @@ public class PaletteUpgrader {
    * their new values, while unchanged IDs remain the same.
    */
   public void upgrade(UnpaddedIntArray array) {
+    if (!locked) {
+      throw new IllegalArgumentException("Upgrader must be locked before upgrading.");
+    }
+
     if (noChanges) {
       return;
     }
 
+    // Determine the highest ID that can be produced by this upgrader.
     int highestId = -1;
     for (int i = 0; i < nextAvailableIndex; i++) {
       int stateId = newIds[i];
