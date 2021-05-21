@@ -30,6 +30,17 @@ public class OozeDataOutputStream extends DataOutputStream {
   }
 
   /**
+   * Writes the standard Ooze header to the underlying output stream; four bytes of magic numbers
+   * followed by a 1-byte {@link #getFormatVersion() version number}.
+   *
+   * @throws IOException If the header cannot be written.
+   */
+  public void writeHeader() throws IOException {
+    writeInt(MAGIC_NUMBER);
+    writeVarInt(getFormatVersion());
+  }
+
+  /**
    * Serializes the provided object to the underlying output stream.
    *
    * @throws IOException If the object could not be serialized or written.
@@ -93,17 +104,6 @@ public class OozeDataOutputStream extends DataOutputStream {
     byte[] nbtBytes = bytesOut.toByteArray();
     writeVarInt(nbtBytes.length);
     write(nbtBytes);
-  }
-
-  /**
-   * Writes the standard Ooze header to the underlying output stream; four bytes of magic numbers
-   * followed by a 1-byte {@link #getFormatVersion() version number}.
-   *
-   * @throws IOException If the header cannot be written.
-   */
-  public void writeHeader() throws IOException {
-    writeInt(MAGIC_NUMBER);
-    writeVarInt(getFormatVersion());
   }
 
   /**
