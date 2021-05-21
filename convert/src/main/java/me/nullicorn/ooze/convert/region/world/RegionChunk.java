@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import lombok.Getter;
+import me.nullicorn.nedit.type.NBTList;
+import me.nullicorn.nedit.type.TagType;
 import me.nullicorn.ooze.Location2D;
 import me.nullicorn.ooze.serialize.OozeDataOutputStream;
 import me.nullicorn.ooze.storage.BlockPalette;
@@ -23,7 +25,7 @@ public class RegionChunk implements Chunk {
   static final         int WIDTH              = 16;
   static final         int DEPTH              = 16;
   static final         int SECTION_HEIGHT     = 16;
-  private static final int SECTIONS_PER_CHUNK = 16;
+  static final         int SECTIONS_PER_CHUNK = 16;
   private static final int HEIGHT             = SECTION_HEIGHT * SECTIONS_PER_CHUNK;
 
   @Getter
@@ -36,10 +38,38 @@ public class RegionChunk implements Chunk {
   // be present.
   private final RegionChunkSection[] sections;
 
+  /**
+   * Serialized data for any entities in the chunk.
+   */
+  @Getter
+  private final NBTList entities;
+
+  /**
+   * Serialized data for any block entities in the chunk.
+   */
+  @Getter
+  private final NBTList blockEntities;
+
   public RegionChunk(Location2D location, int dataVersion) {
     this.location = location;
     this.dataVersion = dataVersion;
     sections = new RegionChunkSection[SECTIONS_PER_CHUNK];
+    entities = new NBTList(TagType.COMPOUND);
+    blockEntities = new NBTList(TagType.COMPOUND);
+  }
+
+  /**
+   * Sets the block data for a 16x16x16 region of the chunk.
+   *
+   * @param altitude How high the section's base is from the bottom of the chunk, in units of 16
+   *                 blocks.
+   * @throws IndexOutOfBoundsException If the section's altitude is out of the chunk's boundaries.
+   */
+  protected void setSection(int altitude, RegionChunkSection section) {
+    if (altitude < 0 || altitude >= SECTIONS_PER_CHUNK) {
+      throw new IndexOutOfBoundsException("Cannot store chunk section at altitude " + altitude);
+    }
+    sections[altitude] = section;
   }
 
   @Override
