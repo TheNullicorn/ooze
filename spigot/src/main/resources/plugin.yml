@@ -1,0 +1,8 @@
+main: me.nullicorn.ooze.spigot.OozePlugin
+
+name: Ooze
+version: ${package.version}
+author: Nullicorn
+
+# Required for our generator to run.
+load: STARTUP
