@@ -3,8 +3,8 @@ package me.nullicorn.ooze.convert.region;
 import java.util.Arrays;
 import java.util.Objects;
 import me.nullicorn.ooze.BitUtils;
-import me.nullicorn.ooze.storage.UnpaddedIntArray;
 import me.nullicorn.ooze.serialize.IntArray;
+import me.nullicorn.ooze.storage.UnpaddedIntArray;
 
 /**
  * A compact format for storing many integers with a known limit. Used by Minecraft to store block
@@ -62,7 +62,7 @@ public class PaddedIntArray implements IntArray {
    * maxValue}.
    */
   private static int wordsNeeded(int size, int maxValue) {
-    int bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
+    int bitsPerCell = Math.max(4, BitUtils.bitsNeededToStore(maxValue));
     int cellsPerWord = BITS_PER_WORD / bitsPerCell;
     return (int) Math.ceil(size / (double) cellsPerWord);
   }
@@ -108,7 +108,7 @@ public class PaddedIntArray implements IntArray {
     this.maxValue = maxValue;
     this.words = words;
 
-    bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
+    bitsPerCell = Math.max(4, BitUtils.bitsNeededToStore(maxValue));
     cellsPerWord = BITS_PER_WORD / bitsPerCell;
     cellMask = BitUtils.createBitMask(bitsPerCell);
 
