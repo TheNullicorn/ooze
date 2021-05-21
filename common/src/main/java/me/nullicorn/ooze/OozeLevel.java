@@ -2,12 +2,11 @@ package me.nullicorn.ooze;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
@@ -42,10 +41,10 @@ public class OozeLevel implements BoundedLevel {
 
   // Highest and lowest chunk coordinates.
   // Used to ensure new chunks are in bounds.
-  private int lowChunkX  = 0;
-  private int highChunkX = 0;
-  private int lowChunkZ  = 0;
-  private int highChunkZ = 0;
+  private int lowChunkX  = MAX_CHUNK_X;
+  private int highChunkX = MIN_CHUNK_X;
+  private int lowChunkZ  = MAX_CHUNK_Z;
+  private int highChunkZ = MIN_CHUNK_Z;
 
   @Override
   public int getLowestChunkX() {
@@ -59,12 +58,12 @@ public class OozeLevel implements BoundedLevel {
 
   @Override
   public int getWidth() {
-    return highChunkX - lowChunkX;
+    return highChunkX - lowChunkX + 1;
   }
 
   @Override
   public int getDepth() {
-    return highChunkZ - lowChunkZ;
+    return highChunkZ - lowChunkZ + 1;
   }
 
   @Override
@@ -91,16 +90,17 @@ public class OozeLevel implements BoundedLevel {
     int chunkX = chunk.getLocation().getX();
     int chunkZ = chunk.getLocation().getZ();
 
-    // Update the level's lowest chunk X & Z accordingly.
+    // Update the level's bounds accordingly.
     if (chunkX < lowChunkX) {
       lowChunkX = chunkX;
-    } else if (chunkX > highChunkX) {
+    }
+    if (chunkX > highChunkX) {
       highChunkX = chunkX;
     }
-
     if (chunkZ < lowChunkZ) {
       lowChunkZ = chunkZ;
-    } else if (chunkZ > highChunkZ) {
+    }
+    if (chunkZ > highChunkZ) {
       highChunkZ = chunkZ;
     }
 
@@ -121,12 +121,13 @@ public class OozeLevel implements BoundedLevel {
     out.writeShort(depth);
 
     // Generate the chunk mask.
-    List<Chunk> writtenChunks = new ArrayList<>();
+    Chunk[] writtenChunks = new Chunk[width * depth];
     BitSet chunkMask = new BitSet(width * depth);
     chunks.values().forEach(chunk -> {
       if (!chunk.isEmpty()) {
-        chunkMask.set(calculateChunkMaskIndex(chunk), true);
-        writtenChunks.add(chunk);
+        int chunkIndex = calculateChunkMaskIndex(chunk);
+        chunkMask.set(chunkIndex, true);
+        writtenChunks[chunkIndex] = chunk;
       }
     });
 
@@ -137,20 +138,22 @@ public class OozeLevel implements BoundedLevel {
     out.write(paddedChunkMask);
 
     // Sort chunks by order of appearance in the chunk mask.
-    writtenChunks.sort(Comparator.comparingInt(this::calculateChunkMaskIndex));
+    Arrays.sort(writtenChunks, Comparator.comparingInt(this::calculateChunkMaskIndex));
 
     // Compress & write chunk data in order.
     ByteArrayOutputStream chunkBytesOut = new ByteArrayOutputStream();
     OozeDataOutputStream chunkDataOut = new OozeDataOutputStream(chunkBytesOut);
     for (Chunk chunk : writtenChunks) {
-      chunk.serialize(chunkDataOut);
+      if (chunk != null) {
+        chunk.serialize(chunkDataOut);
+      }
     }
     out.writeCompressed(chunkBytesOut.toByteArray());
 
     // Write NBT extras (entities, block entities, and custom data).
-    out.writeOptionalNBT(!blockEntities.isEmpty(), "tiles", blockEntities);
-    out.writeOptionalNBT(!entities.isEmpty(), "entities", entities);
-    out.writeOptionalNBT(!customStorage.isEmpty(), "custom", customStorage);
+    out.writeOptionalNBT(!blockEntities.isEmpty(), "BlockEntities", blockEntities);
+    out.writeOptionalNBT(!entities.isEmpty(), "Entities", entities);
+    out.writeOptionalNBT(!customStorage.isEmpty(), "Custom", customStorage);
   }
 
   /**
