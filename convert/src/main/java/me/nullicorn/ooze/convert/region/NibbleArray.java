@@ -3,7 +3,8 @@ package me.nullicorn.ooze.convert.region;
 import me.nullicorn.ooze.serialize.IntArray;
 
 /**
- * An array of 4-bit integer values.
+ * An array of 4-bit unsigned integer values. Used by older versions of Minecraft to store block
+ * states and light levels, among other things.
  *
  * @author Nullicorn
  */
