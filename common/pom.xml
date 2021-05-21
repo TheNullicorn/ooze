@@ -9,6 +9,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
+  <groupId>me.nullicorn.ooze</groupId>
   <artifactId>common</artifactId>
 
   <properties>
@@ -20,7 +21,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>me.nullicorn</groupId>
+      <groupId>me.nullicorn.ooze</groupId>
       <artifactId>api</artifactId>
       <version>${project.version}</version>
     </dependency>

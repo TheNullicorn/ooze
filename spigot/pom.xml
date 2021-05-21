@@ -9,6 +9,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
+  <groupId>me.nullicorn.ooze</groupId>
   <artifactId>spigot</artifactId>
 
   <properties>
@@ -28,9 +29,21 @@
   <dependencies>
     <dependency>
       <groupId>org.spigotmc</groupId>
-      <artifactId>spigot-api</artifactId>
+      <artifactId>spigot</artifactId>
       <version>1.16.5-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>me.nullicorn.ooze</groupId>
+      <artifactId>api</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>me.nullicorn.ooze</groupId>
+      <artifactId>common</artifactId>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 </project>

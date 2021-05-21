@@ -9,8 +9,8 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
+  <groupId>me.nullicorn.ooze</groupId>
   <artifactId>convert</artifactId>
-  <packaging>jar</packaging>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -37,14 +37,14 @@
     </dependency>
 
     <dependency>
-      <groupId>me.nullicorn</groupId>
+      <groupId>me.nullicorn.ooze</groupId>
       <artifactId>api</artifactId>
       <version>${project.version}</version>
       <scope>compile</scope>
     </dependency>
 
     <dependency>
-      <groupId>me.nullicorn</groupId>
+      <groupId>me.nullicorn.ooze</groupId>
       <artifactId>common</artifactId>
       <version>${project.version}</version>
       <scope>compile</scope>
