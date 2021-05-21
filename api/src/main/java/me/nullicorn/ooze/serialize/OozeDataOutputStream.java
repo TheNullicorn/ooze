@@ -5,6 +5,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.BitSet;
 import me.nullicorn.nedit.NBTWriter;
 import me.nullicorn.nedit.type.NBTCompound;
 
@@ -13,8 +15,8 @@ import me.nullicorn.nedit.type.NBTCompound;
  */
 public class OozeDataOutputStream extends DataOutputStream {
 
-  private static final int MAGIC_NUMBER   = 0x610BB10B;
-  private static final int FORMAT_VERSION = 0;
+  static final int MAGIC_NUMBER   = 0x610BB10B;
+  static final int FORMAT_VERSION = 0;
 
   public OozeDataOutputStream(OutputStream out) {
     super(out);
@@ -54,6 +56,20 @@ public class OozeDataOutputStream extends DataOutputStream {
       }
       write(temp);
     } while (value != 0);
+  }
+
+  /**
+   * Writes a BitSet to the underlying stream, padding it to {@code byteCount} if it is shorter than
+   * that many bytes, and trimming it if it is longer.
+   *
+   * @throws IOException If the bytes could not be written.
+   */
+  public void writeBitSet(BitSet value, int byteCount) throws IOException {
+    byte[] bytes = value.toByteArray();
+    if (bytes.length != byteCount) {
+      bytes = Arrays.copyOf(bytes, byteCount);
+    }
+    write(bytes);
   }
 
   /**

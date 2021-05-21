@@ -130,12 +130,7 @@ public class OozeLevel implements BoundedLevel {
         writtenChunks[chunkIndex] = chunk;
       }
     });
-
-    // Pad the chunk mask to ceil(width * depth) bits & write it to the stream.
-    byte[] chunkMaskBytes = chunkMask.toByteArray();
-    byte[] paddedChunkMask = new byte[(int) Math.ceil(width * depth / (double) Byte.SIZE)];
-    System.arraycopy(chunkMaskBytes, 0, paddedChunkMask, 0, chunkMaskBytes.length);
-    out.write(paddedChunkMask);
+    out.writeBitSet(chunkMask, (int) Math.ceil(width * depth / (double) Byte.SIZE));
 
     // Sort chunks by order of appearance in the chunk mask.
     Arrays.sort(writtenChunks, Comparator.comparingInt(this::calculateChunkMaskIndex));

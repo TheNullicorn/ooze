@@ -155,8 +155,7 @@ public class RegionChunk implements Chunk {
         nonEmptySections.set(i);
       }
     }
-
-    out.write(nonEmptySections.toByteArray());
+    out.writeBitSet(nonEmptySections, 2);
 
     if (!nonEmptySections.isEmpty()) {
       BlockPalette globalPalette = new BlockPalette();
