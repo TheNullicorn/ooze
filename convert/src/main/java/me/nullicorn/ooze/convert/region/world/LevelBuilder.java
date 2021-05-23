@@ -12,7 +12,7 @@ import me.nullicorn.ooze.OozeLevel;
 import me.nullicorn.ooze.convert.ConversionException;
 import me.nullicorn.ooze.convert.LegacyUtil;
 import me.nullicorn.ooze.convert.region.NibbleArray;
-import me.nullicorn.ooze.convert.region.PaddedIntArray;
+import me.nullicorn.ooze.storage.PaddedIntArray;
 import me.nullicorn.ooze.convert.region.file.ChunkSource;
 import me.nullicorn.ooze.storage.BlockPalette;
 import me.nullicorn.ooze.storage.PaletteUpgrader;

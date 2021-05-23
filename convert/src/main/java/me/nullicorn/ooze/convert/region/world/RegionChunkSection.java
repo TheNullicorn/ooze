@@ -1,7 +1,7 @@
 package me.nullicorn.ooze.convert.region.world;
 
 import lombok.Getter;
-import me.nullicorn.ooze.convert.region.PaddedIntArray;
+import me.nullicorn.ooze.storage.PaddedIntArray;
 import me.nullicorn.ooze.serialize.IntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
 import me.nullicorn.ooze.storage.PalettedVolume;

@@ -1,10 +1,9 @@
-package me.nullicorn.ooze.convert.region;
+package me.nullicorn.ooze.storage;
 
 import java.util.Arrays;
 import java.util.Objects;
 import me.nullicorn.ooze.BitUtils;
 import me.nullicorn.ooze.serialize.IntArray;
-import me.nullicorn.ooze.storage.UnpaddedIntArray;
 
 /**
  * A compact format for storing many integers with a known limit. Used by Minecraft to store block
