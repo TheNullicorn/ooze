@@ -128,9 +128,9 @@ public class LevelBuilder {
    */
   private RegionChunk createChunk(NBTCompound data) throws ConversionException {
     // Version that the chunk was last saved in.
-    int dataVersion = data.getInt(".DataVersion", 99);
+    int dataVersion = data.getInt("DataVersion", 99);
 
-    data = data.getCompound(".Level");
+    data = data.getCompound("Level");
     if (data == null) {
       throw new ConversionException("Chunk data is missing \"Level\" field");
     }
