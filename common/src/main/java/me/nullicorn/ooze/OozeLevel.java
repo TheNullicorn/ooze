@@ -15,7 +15,6 @@ import me.nullicorn.nedit.type.TagType;
 import me.nullicorn.ooze.serialize.OozeDataOutputStream;
 import me.nullicorn.ooze.world.BoundedLevel;
 import me.nullicorn.ooze.world.Chunk;
-import me.nullicorn.ooze.world.ChunkOutOfBoundsException;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -82,9 +81,9 @@ public class OozeLevel implements BoundedLevel {
   }
 
   @Override
-  public void storeChunk(Chunk chunk) throws ChunkOutOfBoundsException {
+  public void storeChunk(Chunk chunk) {
     if (!isChunkInBounds(chunk.getLocation())) {
-      throw new ChunkOutOfBoundsException(chunk.getLocation());
+      throw new IllegalArgumentException("Chunk at " + chunk.getLocation() + " is out of bounds");
     }
 
     int chunkX = chunk.getLocation().getX();

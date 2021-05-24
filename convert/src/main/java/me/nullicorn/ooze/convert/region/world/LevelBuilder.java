@@ -18,7 +18,6 @@ import me.nullicorn.ooze.storage.PaddedIntArray;
 import me.nullicorn.ooze.storage.PaletteUpgrader;
 import me.nullicorn.ooze.storage.UnpaddedIntArray;
 import me.nullicorn.ooze.world.BlockState;
-import me.nullicorn.ooze.world.ChunkOutOfBoundsException;
 import me.nullicorn.ooze.world.InvalidBlockStateException;
 import org.jetbrains.annotations.Nullable;
 
@@ -98,21 +97,21 @@ public class LevelBuilder {
   /**
    * Compiles all requested chunks into a single level.
    *
-   * @throws IOException               If chunk data could not be retrieved from the {@link
-   *                                   #getSource() source}, or if any of the chunk data was
-   *                                   corrupted.
-   * @throws ChunkOutOfBoundsException If the location of any requested chunk lies outside the
-   *                                   level's bounds.
+   * @throws IOException           If chunk data could not be retrieved from the {@link #getSource()
+   *                               source}, or if any of the chunk data was corrupted.
+   * @throws IllegalStateException If the location of any requested chunk lies outside the level's
+   *                               bounds.
    */
-  public OozeLevel build() throws IOException, ChunkOutOfBoundsException {
+  public OozeLevel build() throws IOException {
     OozeLevel level = new OozeLevel();
     for (Location2D chunkPos : chunksToLoad) {
       NBTCompound chunkData = source.loadChunk(chunkPos);
       if (chunkData != null) {
-        System.out.println("Storing chunk @ " + chunkPos);
-        level.storeChunk(createChunk(chunkData));
-      } else {
-        System.out.println("Missing chunk @ " + chunkPos);
+        try {
+          level.storeChunk(createChunk(chunkData));
+        } catch (IllegalArgumentException e) {
+          throw new IllegalStateException("Cannot build level with out-of-bound chunk", e);
+        }
       }
     }
     return level;

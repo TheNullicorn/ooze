@@ -76,8 +76,7 @@ public interface BoundedLevel extends OozeSerializable {
   /**
    * Set the data for a chunk in the level, overwriting any existing data for that chunk.
    *
-   * @throws ChunkOutOfBoundsException If the chunk cannot be properly stored within the bounds of
-   *                                   the level.
+   * @throws IllegalArgumentException If the chunk cannot be stored within the bounds of the level.
    */
-  void storeChunk(Chunk chunk) throws ChunkOutOfBoundsException;
+  void storeChunk(Chunk chunk);
 }
