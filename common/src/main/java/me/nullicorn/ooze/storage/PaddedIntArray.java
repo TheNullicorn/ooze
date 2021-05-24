@@ -205,7 +205,7 @@ public class PaddedIntArray implements IntArray {
    * @see #fromRaw(long[], int, int, boolean)
    */
   public long[] toRaw() {
-    return Arrays.copyOf(words, words.length);
+    return words;
   }
 
   @Override
