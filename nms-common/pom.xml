@@ -10,7 +10,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>me.nullicorn.ooze</groupId>
-  <artifactId>api</artifactId>
+  <artifactId>nms-api</artifactId>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -19,20 +19,25 @@
     <maven.compiler.source>1.8</maven.compiler.source>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>spigot-repo</id>
+      <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+    </repository>
+  </repositories>
+
   <dependencies>
     <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
+      <groupId>org.spigotmc</groupId>
+      <artifactId>spigot-api</artifactId>
+      <version>1.16.5-R0.1-SNAPSHOT</version>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
-      <groupId>com.github.TheNullicorn</groupId>
-      <artifactId>Nedit</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>com.github.luben</groupId>
-      <artifactId>zstd-jni</artifactId>
+      <groupId>me.nullicorn.ooze</groupId>
+      <artifactId>common</artifactId>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 </project>

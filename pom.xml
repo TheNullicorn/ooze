@@ -9,7 +9,6 @@
   <version>0.0.1</version>
   <packaging>pom</packaging>
   <modules>
-    <module>api</module>
     <module>convert</module>
     <module>common</module>
     <module>spigot</module>
