@@ -41,7 +41,9 @@ public interface BoundedLevel extends OozeSerializable {
    * @see #getChunkAt(int, int)
    */
   @Nullable
-  Chunk getChunkAt(Location2D chunkLocation);
+  default Chunk getChunkAt(Location2D chunkLocation) {
+    return getChunkAt(chunkLocation.getX(), chunkLocation.getZ());
+  }
 
   /**
    * @param chunkX The x coordinate of the chunk.
@@ -63,10 +65,41 @@ public interface BoundedLevel extends OozeSerializable {
   NBTList getEntities();
 
   /**
+   * Same as {@link #getEntities(int, int)}, but {@code chunkX} and {@code chunkZ} are provided via
+   * a {@link Location2D}.
+   *
+   * @see #getEntities(int, int)
+   */
+  default NBTList getEntities(Location2D chunkLocation) {
+    return getEntities(chunkLocation.getX(), chunkLocation.getZ());
+  }
+
+  /**
+   * @return All entities within the bounds of the chunk at the given x and z chunk coordinates.
+   */
+  NBTList getEntities(int chunkX, int chunkZ);
+
+  /**
    * @return All entities that exist in the world represented by this level. Though atypical, it is
    * possible for blocks in this list to exist outside the level's bounds.
    */
   NBTList getBlockEntities();
+
+  /**
+   * Same as {@link #getBlockEntities(int, int)}, but {@code chunkX} and {@code chunkZ} are
+   * provided via a {@link Location2D}.
+   *
+   * @see #getBlockEntities(int, int)
+   */
+  default NBTList getBlockEntities(Location2D chunkLocation) {
+    return getBlockEntities(chunkLocation.getX(), chunkLocation.getZ());
+  }
+
+  /**
+   * @return All block entities within the bounds of the chunk at the given x and z chunk
+   * coordinates.
+   */
+  NBTList getBlockEntities(int chunkX, int chunkZ);
 
   /**
    * @return An object for storing persistent, custom data associated with the level.

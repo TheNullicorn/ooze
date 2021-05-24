@@ -71,13 +71,60 @@ public class OozeLevel implements BoundedLevel {
   }
 
   @Override
-  public @Nullable Chunk getChunkAt(Location2D chunkLocation) {
-    return chunks.get(chunkLocation);
+  public @Nullable Chunk getChunkAt(int chunkX, int chunkZ) {
+    return chunks.get(new Location2D(chunkX, chunkZ));
   }
 
   @Override
-  public @Nullable Chunk getChunkAt(int chunkX, int chunkZ) {
-    return chunks.get(new Location2D(chunkX, chunkZ));
+  public NBTList getEntities(Location2D chunkLoc) {
+    return getEntities(chunkLoc.getX(), chunkLoc.getZ());
+  }
+
+  @Override
+  public NBTList getEntities(int chunkX, int chunkZ) {
+    NBTList entitiesInChunk = new NBTList(TagType.COMPOUND);
+    for (Object entity : entities) {
+      // Every entity should have a "Pos" list with 3 doubles for their X, Y, and Z coords.
+      NBTList pos = ((NBTCompound) entity).getList("Pos");
+      if (pos == null) {
+        continue;
+      }
+
+      // Convert the entity's coords to chunk coords.
+      int entityChunkX = (int) Math.floor(pos.getDouble(0) / 16);
+      int entityChunkZ = (int) Math.floor(pos.getDouble(2) / 16);
+      if (entityChunkX == chunkX && entityChunkZ == chunkZ) {
+        entitiesInChunk.add(entity);
+      }
+    }
+    return entitiesInChunk;
+  }
+
+  @Override
+  public NBTList getBlockEntities(Location2D chunkLoc) {
+    return getBlockEntities(chunkLoc.getX(), chunkLoc.getZ());
+  }
+
+  @Override
+  public NBTList getBlockEntities(int chunkX, int chunkZ) {
+    NBTList blockEntitiesInChunk = new NBTList(TagType.COMPOUND);
+    for (Object blockEntity : blockEntities) {
+      NBTCompound blockData = (NBTCompound) blockEntity;
+      // Every block entity should have ints "x", "y", and "z" for its coordinates.
+      if (!blockData.containsKey("x") || !blockData.containsKey("z")) {
+        continue;
+      }
+      int blockX = blockData.getInt("x", 0);
+      int blockZ = blockData.getInt("z", 0);
+
+      // Convert the block's coords to chunk coords.
+      int blockChunkX = (int) Math.floor(blockX / 16.0);
+      int blockChunkZ = (int) Math.floor(blockZ / 16.0);
+      if (blockChunkX == chunkX && blockChunkZ == chunkZ) {
+        blockEntitiesInChunk.add(blockEntity);
+      }
+    }
+    return blockEntitiesInChunk;
   }
 
   @Override
