@@ -2,6 +2,7 @@ package me.nullicorn.ooze.storage;
 
 import me.nullicorn.ooze.BlockVolume;
 import me.nullicorn.ooze.serialize.IntArray;
+import me.nullicorn.ooze.world.BlockState;
 
 /**
  * A volume of blocks that uses a {@link BlockPalette palette} to associate each block's position
@@ -27,8 +28,7 @@ public interface PalettedVolume<P extends BlockPalette, S extends IntArray> exte
   S getStorage();
 
   /**
-   * @return Whether or not all blocks in the volume are set to its palette's {@link
-   * BlockPalette#getDefaultState() default state}.
+   * @return Whether or not all blocks in the volume {@link BlockState#isAir() are air}.
    */
   boolean isEmpty();
 }

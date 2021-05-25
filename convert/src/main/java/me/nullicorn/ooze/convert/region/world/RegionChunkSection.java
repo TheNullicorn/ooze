@@ -107,11 +107,9 @@ public class RegionChunkSection implements PalettedVolume<BlockPalette, PaddedIn
       return isEmpty;
     }
 
-    int defaultStateId = palette.getDefaultStateId();
     isEmpty = true;
-
     for (int i = 0; i < storage.size(); i++) {
-      if (storage.get(i) != defaultStateId) {
+      if (!palette.getState(storage.get(i)).isAir()) {
         isEmpty = false;
         break;
       }

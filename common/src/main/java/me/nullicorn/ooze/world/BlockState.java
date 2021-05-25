@@ -67,6 +67,18 @@ public class BlockState {
   }
 
   /**
+   * @return Whether or not this state represents any type of air.
+   */
+  public boolean isAir() {
+    if (!name.getPath().equals("minecraft")) {
+      return false;
+    }
+
+    String path = name.getPath();
+    return path.equals("air") || path.equals("cave_air") || path.equals("void_air");
+  }
+
+  /**
    * The following format is used:
    * <pre>
    *   {@code
