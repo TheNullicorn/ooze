@@ -11,9 +11,7 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 import me.nullicorn.nedit.SNBTReader;
 import me.nullicorn.nedit.type.NBTCompound;
-import me.nullicorn.ooze.InvalidResourceLocationException;
 import me.nullicorn.ooze.world.BlockState;
-import me.nullicorn.ooze.world.InvalidBlockStateException;
 
 /**
  * Helper methods for working with data from older Minecraft versions.
@@ -93,8 +91,6 @@ public final class LegacyUtil {
       }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
-    } catch (InvalidBlockStateException | InvalidResourceLocationException e) {
-      throw new UncheckedIOException(new IOException("Failed to load legacy block state", e));
     }
   }
 

@@ -6,7 +6,6 @@ import java.util.Set;
 import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
-import me.nullicorn.ooze.InvalidResourceLocationException;
 import me.nullicorn.ooze.Location2D;
 import me.nullicorn.ooze.OozeLevel;
 import me.nullicorn.ooze.convert.ConversionException;
@@ -18,7 +17,6 @@ import me.nullicorn.ooze.storage.PaddedIntArray;
 import me.nullicorn.ooze.storage.PaletteUpgrader;
 import me.nullicorn.ooze.storage.UnpaddedIntArray;
 import me.nullicorn.ooze.world.BlockState;
-import me.nullicorn.ooze.world.InvalidBlockStateException;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -279,12 +277,7 @@ public class LevelBuilder {
         throw new ConversionException("Cannot create BlockState from " + element.getClass());
       }
 
-      BlockState state;
-      try {
-        state = BlockState.fromNBT((NBTCompound) element);
-      } catch (InvalidBlockStateException | InvalidResourceLocationException e) {
-        throw new ConversionException("Could not deserialize block state: " + element, e);
-      }
+      BlockState state = BlockState.fromNBT((NBTCompound) element);
 
       // Use the first state in the list as the palette's default.
       if (isFirstElement) {

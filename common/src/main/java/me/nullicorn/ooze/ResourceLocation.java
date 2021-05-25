@@ -30,10 +30,10 @@ public class ResourceLocation {
    * </ul>
    *
    * @return The parsed resource location.
-   * @throws InvalidResourceLocationException If the <code>value</code> could not be parsed as a
-   *                                          resource location.
+   * @throws IllegalArgumentException If the <code>value</code> could not be parsed as a resource
+   *                                  location.
    */
-  public static ResourceLocation fromString(String value) throws InvalidResourceLocationException {
+  public static ResourceLocation fromString(String value) {
     String namespace;
     String path;
 
@@ -50,8 +50,7 @@ public class ResourceLocation {
         break;
 
       default:
-        throw new InvalidResourceLocationException(
-            "Not a valid resource location: \"" + value + "\"");
+        throw new IllegalArgumentException("Not a valid resource location: \"" + value + "\"");
     }
 
     return new ResourceLocation(namespace, path);

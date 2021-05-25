@@ -3,7 +3,6 @@ package me.nullicorn.ooze.world;
 import java.util.Objects;
 import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
-import me.nullicorn.ooze.InvalidResourceLocationException;
 import me.nullicorn.ooze.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
@@ -24,17 +23,16 @@ public class BlockState {
    * Constructs a block state from its serialized NBT format.
    *
    * @return The deserialized block state.
-   * @throws InvalidBlockStateException       If the block state does not contain a {@code Name}.
-   * @throws InvalidResourceLocationException If the block's name cannot be parsed.
+   * @throws IllegalArgumentException If the block state does not contain a {@code Name}, or if the
+   *                                  name cannot be parsed.
    * @see #toNBT() The accepted NBT format
    */
-  public static BlockState fromNBT(NBTCompound stateData)
-      throws InvalidBlockStateException, InvalidResourceLocationException {
+  public static BlockState fromNBT(NBTCompound stateData) {
     String name = stateData.getString("Name", null);
     NBTCompound properties = stateData.getCompound("Properties");
 
     if (name == null) {
-      throw new InvalidBlockStateException(stateData);
+      throw new IllegalArgumentException("Unable to deserialize block state: " + stateData);
     }
     return new BlockState(ResourceLocation.fromString(name), properties);
   }
