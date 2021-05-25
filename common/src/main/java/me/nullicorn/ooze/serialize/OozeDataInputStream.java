@@ -8,6 +8,9 @@ import java.io.InputStream;
 import java.util.BitSet;
 import me.nullicorn.nedit.NBTReader;
 import me.nullicorn.nedit.type.NBTCompound;
+import me.nullicorn.ooze.ResourceLocation;
+import me.nullicorn.ooze.storage.BlockPalette;
+import me.nullicorn.ooze.world.BlockState;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -15,7 +18,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public class OozeDataInputStream extends DataInputStream {
 
-  int formatVersion = -1;
+  private int formatVersion = -1;
 
   public OozeDataInputStream(InputStream in) {
     super(in);
@@ -88,15 +91,51 @@ public class OozeDataInputStream extends DataInputStream {
     return BitSet.valueOf(readBytes((int) Math.ceil(length / (double) Byte.SIZE)));
   }
 
-  public NBTCompound readNBT(boolean wrapped) throws IOException {
-    int byteLength = readVarInt();
-    NBTCompound nbt = NBTReader.read(new ByteArrayInputStream(readBytes(byteLength)));
-    if (wrapped) {
-      nbt = (nbt.size() == 1)
-          ? (NBTCompound) nbt.values().toArray()[0]
-          : null;
+  /**
+   * Reads however many bytes are needed to read a full palette of blocks from the stream. The
+   * encoding used is described in {@link OozeDataOutputStream#writePalette(BlockPalette)}.
+   *
+   * @throws IOException If the stream cannot be read.
+   * @see OozeDataOutputStream#writePalette(BlockPalette)
+   */
+  public BlockPalette readPalette() throws IOException {
+    int entryCount = readVarInt();
+    if (entryCount == 0) {
+      // Return an empty palette if there are no entries.
+      return new BlockPalette();
     }
-    return nbt;
+
+    BlockPalette palette = null;
+    for (int i = 0; i < entryCount; i++) {
+      int length = read();
+      boolean hasProperties = ((length & 1) == 0);
+      length >>>= 1;
+
+      // Read the name of the block.
+      String fullName = new String(readBytes(length));
+      ResourceLocation name;
+      try {
+        name = ResourceLocation.fromString(fullName);
+      } catch (IllegalArgumentException e) {
+        throw new IOException("Invalid state name in block palette: " + fullName, e);
+      }
+
+      // Read the block's properties (if it has any).
+      NBTCompound properties = hasProperties
+          ? NBTReader.read(this)
+          : null;
+
+      // Add the state to the palette.
+      BlockState state = new BlockState(name, properties);
+      if (palette == null) {
+        // The first entry is the default for the palette.
+        palette = new BlockPalette(state);
+      } else {
+        palette.addState(state);
+      }
+    }
+
+    return palette;
   }
 
   /**

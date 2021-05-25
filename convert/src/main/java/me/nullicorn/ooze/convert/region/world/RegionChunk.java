@@ -174,24 +174,7 @@ public class RegionChunk implements Chunk {
       }
 
       // Write chunk palette.
-      out.writeVarInt(globalPalette.size());
-      for (BlockState state : globalPalette) {
-        // Least sig bit indicates whether or not the state has properties.
-        // 7 most sig bits are the length of the state's name.
-        String name = state.getName().toString();
-        int length = name.length() << 1;
-
-        boolean hasProperties = state.hasProperties();
-        if (hasProperties) {
-          length |= 1;
-        }
-
-        out.write(length);
-        out.writeBytes(name);
-        if (hasProperties) {
-          out.writeNBT(state.getProperties(), true);
-        }
-      }
+      out.writePalette(globalPalette);
 
       // Write blocks.
       for (UnpaddedIntArray storage : sectionStorage) {

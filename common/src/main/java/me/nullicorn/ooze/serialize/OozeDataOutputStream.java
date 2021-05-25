@@ -9,6 +9,9 @@ import java.util.Arrays;
 import java.util.BitSet;
 import me.nullicorn.nedit.NBTWriter;
 import me.nullicorn.nedit.type.NBTCompound;
+import me.nullicorn.ooze.ResourceLocation;
+import me.nullicorn.ooze.storage.BlockPalette;
+import me.nullicorn.ooze.world.BlockState;
 
 /**
  * @author Nullicorn
@@ -84,26 +87,45 @@ public class OozeDataOutputStream extends DataOutputStream {
   }
 
   /**
-   * Writes an uncompressed NBT compound to the underlying output stream. The NBT data is prefixed
-   * by its length in bytes as a LEB128 integer.
+   * Writes each entry in a block palette to the underlying stream, prefixed by the number of
+   * entries as a LEB128-encoded integer.
+   * <p>
+   * The first byte of each entry has two purposes: the highest 7 bits hold the length of the
+   * state's {@link BlockState#getName() name} (in bytes), and the lowest bit indicates whether or
+   * not the state has any additional {@link BlockState#getProperties() properties}. Following that
+   * is the state's {@link BlockState#getName() name}, encoded using however many bytes were
+   * indicated previously. Then, if the aforementioned low bit was set, the block's properties are
+   * serialized as an unnamed NBT compound.
    *
-   * @param wrap Whether or not the provided compound should be wrapped in an unnamed compound
-   *             before serializing.
-   * @throws IOException If the compound cannot be serialized or written.
+   * @throws IllegalArgumentException If any state in the palette has a name longer than 127
+   *                                  characters when {@link ResourceLocation#toString()} is used.
+   * @throws IOException              If the palette could not be written, or if the NBT properties
+   *                                  could not be serialized.
    */
-  public void writeNBT(NBTCompound compound, boolean wrap) throws IOException {
-    if (wrap) {
-      NBTCompound wrapper = new NBTCompound();
-      wrapper.put("", compound);
-      compound = wrapper;
+  public void writePalette(BlockPalette palette) throws IOException {
+    writeVarInt(palette.size());
+    for (BlockState state : palette) {
+      // Least sig bit indicates whether or not the state has properties.
+      // 7 most sig bits are the length of the state's name.
+      String name = state.getName().toString();
+      int length = name.length() << 1;
+      if (name.length() > 0b1111111) {
+        throw new IllegalArgumentException("State name must be < 127 characters: " + name);
+      }
+
+      NBTCompound properties = state.getProperties();
+      boolean hasProperties = (properties != null);
+      if (hasProperties) {
+        // Set lowest bit of `length` to indicate that properties follow.
+        length |= 1;
+      }
+
+      write(length);
+      writeBytes(name);
+      if (hasProperties) {
+        NBTWriter.write(state.getProperties(), out, false);
+      }
     }
-
-    ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
-    NBTWriter.write(compound, bytesOut, false);
-
-    byte[] nbtBytes = bytesOut.toByteArray();
-    writeVarInt(nbtBytes.length);
-    write(nbtBytes);
   }
 
   /**
