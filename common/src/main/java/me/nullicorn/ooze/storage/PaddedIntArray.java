@@ -8,6 +8,10 @@ import me.nullicorn.ooze.serialize.IntArray;
 /**
  * A compact format for storing many integers with a known limit. Used by Minecraft to store block
  * states.
+ * <p>
+ * The raw format used to store values is documented <a href=https://wiki.vg/Chunk_Format#Compacted_data_array>here</a>,
+ * including a description of the "legacy"/old format mentioned in {@link #toRaw(boolean) toRaw()}
+ * and {@link #fromRaw(long[], int, int, boolean) fromRaw()}.
  *
  * @author Nullicorn
  */
@@ -16,17 +20,17 @@ public class PaddedIntArray implements IntArray {
   private static final int BITS_PER_WORD = Long.SIZE;
 
   /**
-   * Reads a padded array of integers from its {@link #toRaw() raw format}.
+   * Reads a padded array of integers from its {@link #toRaw(boolean) raw format}.
    *
    * @param size     The number of compact elements in the source array; usually larger than the
    *                 array's actual length.
-   * @param isPadded Whether or not values within the {@code source} array can span across multiple
+   * @param isLegacy Whether or not values within the {@code source} array can span across multiple
    *                 longs.
    * @param maxValue The highest value that can be stored at any index in the compact array.
-   * @see #toRaw()
+   * @see #toRaw(boolean)
    */
-  public static PaddedIntArray fromRaw(long[] source, int size, int maxValue, boolean isPadded) {
-    if (isPadded) {
+  public static PaddedIntArray fromRaw(long[] source, int size, int maxValue, boolean isLegacy) {
+    if (isLegacy) {
       // Data should already be formatted properly.
       return new PaddedIntArray(size, maxValue, source);
     } else {
@@ -204,8 +208,30 @@ public class PaddedIntArray implements IntArray {
    *
    * @see #fromRaw(long[], int, int, boolean)
    */
-  public long[] toRaw() {
-    return words;
+  public long[] toRaw(boolean useLegacyFormat) {
+    if (!useLegacyFormat) {
+      return words;
+    } else {
+      long[] legacyWords = new long[(int) Math.ceil(size * bitsPerCell / (double) BITS_PER_WORD)];
+
+      forEach(((index, value) -> {
+        int bitIndex = index * bitsPerCell;
+        int startWord = bitIndex / BITS_PER_WORD;
+        int endWord = (bitIndex + bitsPerCell) / BITS_PER_WORD;
+        int startOffset = bitIndex % BITS_PER_WORD;
+
+        value &= cellMask;
+        if (startWord == endWord) {
+          legacyWords[startWord] |= (value << startOffset);
+        } else {
+          int endOffset = BITS_PER_WORD - startOffset;
+          legacyWords[startWord] |= (value << startOffset);
+          legacyWords[endWord] |= (value >> endOffset);
+        }
+      }));
+
+      return legacyWords;
+    }
   }
 
   @Override
