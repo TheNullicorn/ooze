@@ -10,7 +10,7 @@ import me.nullicorn.nedit.type.TagType;
 import me.nullicorn.ooze.Location2D;
 import me.nullicorn.ooze.serialize.OozeDataOutputStream;
 import me.nullicorn.ooze.storage.BlockPalette;
-import me.nullicorn.ooze.storage.UnpaddedIntArray;
+import me.nullicorn.ooze.storage.BitCompactIntArray;
 import me.nullicorn.ooze.world.BlockState;
 import me.nullicorn.ooze.world.Chunk;
 
@@ -159,7 +159,7 @@ public class RegionChunk implements Chunk {
 
     if (!nonEmptySections.isEmpty()) {
       BlockPalette globalPalette = new BlockPalette();
-      List<UnpaddedIntArray> sectionStorage = new ArrayList<>();
+      List<BitCompactIntArray> sectionStorage = new ArrayList<>();
 
       for (int i = 0; i < nonEmptySections.length(); i++) {
         if (nonEmptySections.get(i)) {
@@ -167,7 +167,7 @@ public class RegionChunk implements Chunk {
 
           // Merge the section's palette into the chunk's, and update the section's block data
           // accordingly.
-          UnpaddedIntArray storage = UnpaddedIntArray.fromIntArray(section.getStorage());
+          BitCompactIntArray storage = BitCompactIntArray.fromIntArray(section.getStorage());
           globalPalette.addAll(section.getPalette()).upgrade(storage);
           sectionStorage.add(storage);
         }
@@ -177,7 +177,7 @@ public class RegionChunk implements Chunk {
       out.writePalette(globalPalette);
 
       // Write blocks.
-      for (UnpaddedIntArray storage : sectionStorage) {
+      for (BitCompactIntArray storage : sectionStorage) {
         out.write(storage);
       }
     }

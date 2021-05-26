@@ -172,7 +172,7 @@ public class BlockPalette implements Iterable<BlockState> {
    * Note that "air" is included in the extracted palette despite not being used. This is because it
    * is the default block state in the original palette.
    */
-  public BlockPalette extract(UnpaddedIntArray data) {
+  public BlockPalette extract(BitCompactIntArray data) {
     int maxState = registeredStates.size();
     BitSet usedStates = new BitSet(maxState + 1);
 

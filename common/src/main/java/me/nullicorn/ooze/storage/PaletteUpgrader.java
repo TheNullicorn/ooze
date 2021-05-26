@@ -40,7 +40,7 @@ public class PaletteUpgrader {
 
   /**
    * Registers a change in a block state's palette ID, so that any instances of {@code oldId} passed
-   * through {@link #upgrade(int)} or {@link #upgrade(UnpaddedIntArray)} will be replaced with
+   * through {@link #upgrade(int)} or {@link #upgrade(BitCompactIntArray)} will be replaced with
    * {@code newId}.
    * <p>
    * This cannot be called after an upgrader has been {@link #lock() locked}.
@@ -116,7 +116,7 @@ public class PaletteUpgrader {
    * Upgrades an {@code array} of state IDs so that any outdated IDs in the array are upgraded to
    * their new values, while unchanged IDs remain the same.
    */
-  public void upgrade(UnpaddedIntArray array) {
+  public void upgrade(BitCompactIntArray array) {
     if (!locked) {
       throw new IllegalArgumentException("Upgrader must be locked before upgrading.");
     }
@@ -181,7 +181,7 @@ public class PaletteUpgrader {
     }
 
     @Override
-    public void upgrade(UnpaddedIntArray array) {
+    public void upgrade(BitCompactIntArray array) {
       // Do nothing.
     }
   }

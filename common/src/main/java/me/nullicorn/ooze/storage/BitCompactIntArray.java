@@ -10,29 +10,32 @@ import me.nullicorn.ooze.serialize.OozeSerializable;
 
 /**
  * An integer array that internally packs values as close as possible to maintain low footprint
- * in-memory and when serialized. Loosely based on Minecraft's block storage format.
+ * in-memory and when serialized. Loosely based on {@link WordedIntArray Minecraft's block storage
+ * format}.
+ * <p>
+ * TODO: 5/26/21 Document format.
  *
  * @author Nullicorn
  */
-public class UnpaddedIntArray implements IntArray, OozeSerializable {
+public class BitCompactIntArray implements IntArray, OozeSerializable {
 
   /**
-   * Creates an unpadded array with the same contents, {@link IntArray#size() size} and {@link
+   * Creates a compact array with the same contents, {@link IntArray#size() size} and {@link
    * IntArray#maxValue() maximum value} as the {@code source} array.
    */
-  public static UnpaddedIntArray fromIntArray(IntArray source) {
-    if (source instanceof UnpaddedIntArray) {
-      return (UnpaddedIntArray) source;
+  public static BitCompactIntArray fromIntArray(IntArray source) {
+    if (source instanceof BitCompactIntArray) {
+      return (BitCompactIntArray) source;
     }
 
-    UnpaddedIntArray newArr = new UnpaddedIntArray(source.size(), source.maxValue());
+    BitCompactIntArray newArr = new BitCompactIntArray(source.size(), source.maxValue());
     source.forEach(newArr::set);
     return newArr;
   }
 
   /**
-   * Performs the {@link #get(int)} operation on an unpadded int array independent of its {@link
-   * UnpaddedIntArray wrapper} object. This allows new arrays to be read directly, such as when
+   * Performs the {@link #get(int)} operation on a compact int array independent of its {@link
+   * BitCompactIntArray wrapper} object. This allows new arrays to be read directly, such as when
    * resizing.
    */
   private static int getInternal(byte[] raw, int bitsPerCell, int cellMask, int index) {
@@ -59,9 +62,9 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
   }
 
   /**
-   * Performs the {@link #set(int, int)} operation on an unpadded int array independent of its
-   * {@link UnpaddedIntArray wrapper} object. This allows new arrays to be modified directly, such
-   * as when resizing.
+   * Performs the {@link #set(int, int)} operation on a compact int array independent of its {@link
+   * BitCompactIntArray wrapper} object. This allows new arrays to be modified directly, such as
+   * when resizing.
    */
   private static int setInternal(byte[] raw, int bitsPerCell, int cellMask, int index, int value) {
     int bitIndex = index * bitsPerCell;
@@ -109,7 +112,7 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
   // A mask of [bitsPerCell] set bits.
   private int cellMask;
 
-  public UnpaddedIntArray(int size, int maxValue) {
+  public BitCompactIntArray(int size, int maxValue) {
     this.size = size;
     this.maxValue = maxValue;
     this.bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
@@ -255,7 +258,7 @@ public class UnpaddedIntArray implements IntArray, OozeSerializable {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    UnpaddedIntArray that = (UnpaddedIntArray) o;
+    BitCompactIntArray that = (BitCompactIntArray) o;
     return size == that.size &&
            maxValue == that.maxValue &&
            Arrays.equals(data, that.data);

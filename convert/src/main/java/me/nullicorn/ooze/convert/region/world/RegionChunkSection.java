@@ -3,7 +3,7 @@ package me.nullicorn.ooze.convert.region.world;
 import lombok.Getter;
 import me.nullicorn.ooze.serialize.IntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
-import me.nullicorn.ooze.storage.PaddedIntArray;
+import me.nullicorn.ooze.storage.WordedIntArray;
 import me.nullicorn.ooze.storage.PalettedVolume;
 import me.nullicorn.ooze.world.BlockState;
 
@@ -12,7 +12,7 @@ import me.nullicorn.ooze.world.BlockState;
  *
  * @author Nullicorn
  */
-public class RegionChunkSection implements PalettedVolume<BlockPalette, PaddedIntArray> {
+public class RegionChunkSection implements PalettedVolume<BlockPalette, WordedIntArray> {
 
   private static final int STORAGE_SIZE = RegionChunk.WIDTH
                                           * RegionChunk.SECTION_HEIGHT
@@ -22,7 +22,7 @@ public class RegionChunkSection implements PalettedVolume<BlockPalette, PaddedIn
   private final BlockPalette palette;
 
   @Getter
-  private final PaddedIntArray storage;
+  private final WordedIntArray storage;
 
   // Cached result of the last call to isEmpty().
   private boolean isEmpty = true;
@@ -31,7 +31,7 @@ public class RegionChunkSection implements PalettedVolume<BlockPalette, PaddedIn
   private boolean modifiedSinceEmptyCheck = true;
 
   public RegionChunkSection() {
-    this(new BlockPalette(), new PaddedIntArray(STORAGE_SIZE, 0));
+    this(new BlockPalette(), new WordedIntArray(STORAGE_SIZE, 0));
   }
 
   public RegionChunkSection(BlockPalette palette, IntArray storage) {
@@ -44,7 +44,7 @@ public class RegionChunkSection implements PalettedVolume<BlockPalette, PaddedIn
     }
 
     this.palette = palette;
-    this.storage = PaddedIntArray.fromIntArray(storage);
+    this.storage = WordedIntArray.fromIntArray(storage);
   }
 
   @Override

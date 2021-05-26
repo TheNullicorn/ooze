@@ -15,42 +15,42 @@ import me.nullicorn.ooze.serialize.IntArray;
  *
  * @author Nullicorn
  */
-public class PaddedIntArray implements IntArray {
+public class WordedIntArray implements IntArray {
 
   private static final int BITS_PER_WORD = Long.SIZE;
 
   /**
-   * Creates a padded array with the same contents, {@link IntArray#size() size} and {@link
+   * Creates a worded array with the same contents, {@link IntArray#size() size} and {@link
    * IntArray#maxValue() maximum value} as the {@code source} array.
    */
-  public static PaddedIntArray fromIntArray(IntArray source) {
-    if (source instanceof PaddedIntArray) {
-      return (PaddedIntArray) source;
+  public static WordedIntArray fromIntArray(IntArray source) {
+    if (source instanceof WordedIntArray) {
+      return (WordedIntArray) source;
     }
 
-    PaddedIntArray newArr = new PaddedIntArray(source.size(), source.maxValue());
+    WordedIntArray newArr = new WordedIntArray(source.size(), source.maxValue());
     source.forEach(newArr::set);
     return newArr;
   }
 
   /**
-   * Reads a padded array of integers from its {@link #toRaw(boolean) raw format}.
+   * Reads a worded array of integers from its {@link #toRaw(boolean) raw format}.
    *
    * @param size     The number of compact elements in the source array; usually larger than the
    *                 array's actual length.
-   * @param isLegacy Whether or not values within the {@code source} array can span across multiple
-   *                 longs.
+   * @param isLegacy Whether or not the {@code source} uses the old encoding, where a single value
+   *                 in the array could be split across consecutive longs.
    * @param maxValue The highest value that can be stored at any index in the compact array.
    * @see #toRaw(boolean)
    */
-  public static PaddedIntArray fromRaw(long[] source, int size, int maxValue, boolean isLegacy) {
+  public static WordedIntArray fromRaw(long[] source, int size, int maxValue, boolean isLegacy) {
     if (isLegacy) {
       // Data should already be formatted properly.
-      return new PaddedIntArray(size, maxValue, source);
+      return new WordedIntArray(size, maxValue, source);
     } else {
-      PaddedIntArray array = new PaddedIntArray(size, maxValue);
+      WordedIntArray array = new WordedIntArray(size, maxValue);
 
-      // Extract values from unpadded format.
+      // Extract values from compact format.
       int bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
       int cellMask = BitUtils.createBitMask(bitsPerCell);
       for (int cellIndex = 0; cellIndex < size; cellIndex++) {
@@ -110,11 +110,11 @@ public class PaddedIntArray implements IntArray {
   // A bitmask with the least significant <bitsPerCell> bits set.
   private final long cellMask;
 
-  public PaddedIntArray(int size, int maxValue) {
+  public WordedIntArray(int size, int maxValue) {
     this(size, maxValue, new long[wordsNeeded(size, maxValue)]);
   }
 
-  private PaddedIntArray(int size, int maxValue, long[] words) {
+  private WordedIntArray(int size, int maxValue, long[] words) {
     if (size < 0) {
       throw new IllegalArgumentException("Illegal array size: " + size);
     } else if (maxValue < 0) {
@@ -204,14 +204,15 @@ public class PaddedIntArray implements IntArray {
 
   /**
    * Converts the array to its simplest form, such that it can be reconstructed via {@link
-   * #fromRaw(long[], int, int, boolean)}. Indices in the returned array will no longer correspond
-   * to the appropriate value, and the returned array may be a different length than the actual
-   * array.
+   * #fromRaw(long[], int, int, boolean) fromRaw()}. The format used to store values is documented
+   * <a href=https://wiki.vg/Chunk_Format#Compacted_data_array>here</a>.
    *
+   * @param useLegacyEncoding Whether or not the returned array should use the old encoding, where a
+   *                          single value could be split across consecutive longs.
    * @see #fromRaw(long[], int, int, boolean)
    */
-  public long[] toRaw(boolean useLegacyFormat) {
-    if (!useLegacyFormat) {
+  public long[] toRaw(boolean useLegacyEncoding) {
+    if (!useLegacyEncoding) {
       return words;
     } else {
       long[] legacyWords = new long[(int) Math.ceil(size * bitsPerCell / (double) BITS_PER_WORD)];
@@ -264,7 +265,7 @@ public class PaddedIntArray implements IntArray {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    PaddedIntArray that = (PaddedIntArray) o;
+    WordedIntArray that = (WordedIntArray) o;
     return size == that.size &&
            maxValue == that.maxValue &&
            Arrays.equals(words, that.words);

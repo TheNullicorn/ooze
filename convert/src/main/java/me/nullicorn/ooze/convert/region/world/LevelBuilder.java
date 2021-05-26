@@ -13,9 +13,9 @@ import me.nullicorn.ooze.convert.LegacyUtil;
 import me.nullicorn.ooze.convert.region.NibbleArray;
 import me.nullicorn.ooze.convert.region.file.ChunkSource;
 import me.nullicorn.ooze.storage.BlockPalette;
-import me.nullicorn.ooze.storage.PaddedIntArray;
+import me.nullicorn.ooze.storage.WordedIntArray;
 import me.nullicorn.ooze.storage.PaletteUpgrader;
-import me.nullicorn.ooze.storage.UnpaddedIntArray;
+import me.nullicorn.ooze.storage.BitCompactIntArray;
 import me.nullicorn.ooze.world.BlockState;
 import org.jetbrains.annotations.Nullable;
 
@@ -197,7 +197,7 @@ public class LevelBuilder {
 
       // noinspection ConstantConditions
       BlockPalette palette = createPalette(data.getList("Palette"));
-      PaddedIntArray storage = PaddedIntArray.fromRaw(
+      WordedIntArray storage = WordedIntArray.fromRaw(
           data.getLongArray("BlockStates"),
           4096,
           palette.size() - 1,
@@ -241,8 +241,8 @@ public class LevelBuilder {
     BlockPalette palette = new BlockPalette();
     PaletteUpgrader upgrader = new PaletteUpgrader(maxState);
 
-    // Unpadded is used so that it can be passed to upgrader#upgrade()
-    UnpaddedIntArray tempStorage = new UnpaddedIntArray(4096, maxState);
+    // Compact array is used so that it can be passed to upgrader#upgrade()
+    BitCompactIntArray tempStorage = new BitCompactIntArray(4096, maxState);
     for (int i = 0; i < rawBlocks.length; i++) {
       int blockId = rawBlocks[i];
       if (overflowArray != null) {
@@ -259,7 +259,7 @@ public class LevelBuilder {
 
     // Apply the legacy->paletted ID change.
     upgrader.upgrade(tempStorage);
-    PaddedIntArray storage = new PaddedIntArray(tempStorage.size(), tempStorage.maxValue());
+    WordedIntArray storage = new WordedIntArray(tempStorage.size(), tempStorage.maxValue());
 
     return new RegionChunkSection(palette, storage);
   }
