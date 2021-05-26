@@ -203,7 +203,7 @@ public class LevelBuilder {
           data.getLongArray("BlockStates"),
           4096,
           palette.size() - 1,
-          dataVersion >= BLOCKS_PADDED_DATA_VERSION);
+          dataVersion < BLOCKS_PADDED_DATA_VERSION);
       return new OozeChunkSection(palette, storage);
     } else {
       // Section uses pre-1.13, absolute storage format.

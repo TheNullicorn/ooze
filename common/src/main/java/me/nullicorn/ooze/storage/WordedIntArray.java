@@ -44,7 +44,7 @@ public class WordedIntArray implements IntArray {
    * @see #toRaw(boolean)
    */
   public static WordedIntArray fromRaw(long[] source, int size, int maxValue, boolean isLegacy) {
-    if (isLegacy) {
+    if (!isLegacy) {
       // Data should already be formatted properly.
       return new WordedIntArray(size, maxValue, source);
     } else {
