@@ -61,13 +61,4 @@ public interface BlockVolume {
    *                                   volume.
    */
   BlockState getBlockAt(int x, int y, int z);
-
-  /**
-   * Changes the state of the block at a given position.
-   *
-   * @return The block state that was previously set at those coordinates.
-   * @throws IndexOutOfBoundsException If the provided coordinates are outside the bounds of this
-   *                                   volume.
-   */
-  BlockState setBlockAt(int x, int y, int z, BlockState state);
 }

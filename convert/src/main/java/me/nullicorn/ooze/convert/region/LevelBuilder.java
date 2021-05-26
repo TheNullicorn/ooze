@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.convert.region.world;
+package me.nullicorn.ooze.convert.region;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -7,16 +7,17 @@ import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.world.OozeLevel;
 import me.nullicorn.ooze.convert.ConversionException;
 import me.nullicorn.ooze.convert.LegacyUtil;
-import me.nullicorn.ooze.convert.region.NibbleArray;
 import me.nullicorn.ooze.convert.region.file.ChunkSource;
-import me.nullicorn.ooze.storage.BlockPalette;
-import me.nullicorn.ooze.storage.WordedIntArray;
-import me.nullicorn.ooze.storage.PaletteUpgrader;
 import me.nullicorn.ooze.storage.BitCompactIntArray;
+import me.nullicorn.ooze.storage.BlockPalette;
+import me.nullicorn.ooze.storage.PaletteUpgrader;
+import me.nullicorn.ooze.storage.WordedIntArray;
 import me.nullicorn.ooze.world.BlockState;
+import me.nullicorn.ooze.world.OozeChunk;
+import me.nullicorn.ooze.world.OozeChunkSection;
+import me.nullicorn.ooze.world.OozeLevel;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -24,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author Nullicorn
  */
+@SuppressWarnings("UnusedReturnValue")
 public class LevelBuilder {
 
   // TODO: 5/21/21 Make entities toggleable.
@@ -123,7 +125,7 @@ public class LevelBuilder {
    *
    * @throws ConversionException If the chunk data is corrupted.
    */
-  private RegionChunk createChunk(NBTCompound data) throws ConversionException {
+  private OozeChunk createChunk(NBTCompound data) throws ConversionException {
     // Version that the chunk was last saved in.
     int dataVersion = data.getInt("DataVersion", 99);
 
@@ -139,7 +141,7 @@ public class LevelBuilder {
     Location2D chunkPos = new Location2D(data.getInt("xPos", 0), data.getInt("zPos", 0));
 
     // Store the chunk's 16x16x16 block sections.
-    RegionChunk chunk = new RegionChunk(chunkPos, dataVersion);
+    OozeChunk chunk = new OozeChunk(chunkPos, dataVersion);
     NBTList sections = data.getList("Sections");
     if (sections != null) {
       for (Object element : sections) {
@@ -154,7 +156,7 @@ public class LevelBuilder {
 
         // Ignore sections at invalid heights.
         int altitude = sectionData.getInt("Y", -1);
-        if (altitude >= 0 && altitude < RegionChunk.SECTIONS_PER_CHUNK) {
+        if (altitude >= 0 && altitude < OozeChunk.SECTIONS_PER_CHUNK) {
           chunk.setSection(altitude, createChunkSection(sectionData, dataVersion));
         }
       }
@@ -183,7 +185,7 @@ public class LevelBuilder {
    * @throws ConversionException If the section contains corrupted data.
    */
   @Nullable
-  private RegionChunkSection createChunkSection(NBTCompound data, int dataVersion)
+  private OozeChunkSection createChunkSection(NBTCompound data, int dataVersion)
       throws ConversionException {
 
     if (dataVersion > PALETTE_ADDED_DATA_VERSION) {
@@ -202,7 +204,7 @@ public class LevelBuilder {
           4096,
           palette.size() - 1,
           dataVersion >= BLOCKS_PADDED_DATA_VERSION);
-      return new RegionChunkSection(palette, storage);
+      return new OozeChunkSection(palette, storage);
     } else {
       // Section uses pre-1.13, absolute storage format.
       return createLegacySection(data);
@@ -215,7 +217,7 @@ public class LevelBuilder {
    * block IDs instead of a palette.
    */
   @Nullable
-  private RegionChunkSection createLegacySection(NBTCompound data) throws ConversionException {
+  private OozeChunkSection createLegacySection(NBTCompound data) throws ConversionException {
     byte[] rawBlocks = data.getByteArray("Blocks");
     byte[] rawOverflowBlocks = data.getByteArray("Add");
     byte[] rawData = data.getByteArray("Data");
@@ -261,7 +263,7 @@ public class LevelBuilder {
     upgrader.upgrade(tempStorage);
     WordedIntArray storage = new WordedIntArray(tempStorage.size(), tempStorage.maxValue());
 
-    return new RegionChunkSection(palette, storage);
+    return new OozeChunkSection(palette, storage);
   }
 
   /**

@@ -58,8 +58,10 @@ public class OozeDataOutputStream extends DataOutputStream {
    * @throws IOException If the number could not be written.
    */
   public void writeVarInt(int value) throws IOException {
-    if (value == 0) {
+    // Shortcut; values that fit in 7 bits can be written directly.
+    if (value >= 0 && value <= 127) {
       write(value);
+      return;
     }
 
     do {
