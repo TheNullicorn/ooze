@@ -7,7 +7,7 @@ import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.OozeLevel;
+import me.nullicorn.ooze.world.OozeLevel;
 import me.nullicorn.ooze.convert.ConversionException;
 import me.nullicorn.ooze.convert.LegacyUtil;
 import me.nullicorn.ooze.convert.region.NibbleArray;

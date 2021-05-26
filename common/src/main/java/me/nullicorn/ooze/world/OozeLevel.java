@@ -1,4 +1,4 @@
-package me.nullicorn.ooze;
+package me.nullicorn.ooze.world;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -12,9 +12,8 @@ import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.nedit.type.TagType;
+import me.nullicorn.ooze.Location2D;
 import me.nullicorn.ooze.serialize.OozeDataOutputStream;
-import me.nullicorn.ooze.world.BoundedLevel;
-import me.nullicorn.ooze.world.Chunk;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -30,9 +29,9 @@ public class OozeLevel implements BoundedLevel {
   private static final int MIN_CHUNK_Z = Short.MIN_VALUE;
   private static final int MAX_CHUNK_Z = Short.MAX_VALUE;
 
-  private final Map<Location2D, Chunk> chunks        = new HashMap<>();
+  private final Map<Location2D, Chunk> chunks   = new HashMap<>();
   @Getter
-  private final NBTList                entities      = new NBTList(TagType.COMPOUND);
+  private final NBTList                entities = new NBTList(TagType.COMPOUND);
   @Getter
   private final NBTList                blockEntities = new NBTList(TagType.COMPOUND);
   @Getter
