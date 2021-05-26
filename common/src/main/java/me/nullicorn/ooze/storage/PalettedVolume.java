@@ -14,18 +14,18 @@ import me.nullicorn.ooze.world.BlockState;
  *
  * @author Nullicorn
  */
-public interface PalettedVolume<P extends BlockPalette, S extends IntArray> extends BlockVolume {
+public interface PalettedVolume extends BlockVolume {
 
   /**
    * @return The palette of blocks used by this volume.
    */
-  P getPalette();
+  BlockPalette getPalette();
 
   /**
    * @return An array of integers relating each block's position to its state in the volume's {@link
    * #getPalette() palette}.
    */
-  S getStorage();
+  IntArray getStorage();
 
   /**
    * @return Whether or not all blocks in the volume {@link BlockState#isAir() are air}.

@@ -3,8 +3,8 @@ package me.nullicorn.ooze.convert.region.world;
 import lombok.Getter;
 import me.nullicorn.ooze.serialize.IntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
-import me.nullicorn.ooze.storage.WordedIntArray;
 import me.nullicorn.ooze.storage.PalettedVolume;
+import me.nullicorn.ooze.storage.WordedIntArray;
 import me.nullicorn.ooze.world.BlockState;
 
 /**
@@ -12,7 +12,7 @@ import me.nullicorn.ooze.world.BlockState;
  *
  * @author Nullicorn
  */
-public class RegionChunkSection implements PalettedVolume<BlockPalette, WordedIntArray> {
+public class RegionChunkSection implements PalettedVolume {
 
   private static final int STORAGE_SIZE = RegionChunk.WIDTH
                                           * RegionChunk.SECTION_HEIGHT
