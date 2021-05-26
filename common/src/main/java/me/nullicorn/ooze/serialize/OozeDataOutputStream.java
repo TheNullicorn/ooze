@@ -145,15 +145,12 @@ public class OozeDataOutputStream extends DataOutputStream {
     writeBoolean(write);
 
     if (write) {
-      NBTCompound wrapper = new NBTCompound();
       NBTCompound root = new NBTCompound();
-
-      wrapper.put("", root);
       root.put(key, value);
 
       // Serialize & compress the contents of the wrapper compound.
       ByteArrayOutputStream nbtOut = new ByteArrayOutputStream();
-      NBTWriter.write(wrapper, nbtOut, false);
+      NBTWriter.write(root, nbtOut, false);
       writeCompressed(nbtOut.toByteArray());
     }
   }
