@@ -20,6 +20,20 @@ public class PaddedIntArray implements IntArray {
   private static final int BITS_PER_WORD = Long.SIZE;
 
   /**
+   * Creates a padded array with the same contents, {@link IntArray#size() size} and {@link
+   * IntArray#maxValue() maximum value} as the {@code source} array.
+   */
+  public static PaddedIntArray fromIntArray(IntArray source) {
+    if (source instanceof PaddedIntArray) {
+      return (PaddedIntArray) source;
+    }
+
+    PaddedIntArray newArr = new PaddedIntArray(source.size(), source.maxValue());
+    source.forEach(newArr::set);
+    return newArr;
+  }
+
+  /**
    * Reads a padded array of integers from its {@link #toRaw(boolean) raw format}.
    *
    * @param size     The number of compact elements in the source array; usually larger than the
@@ -171,18 +185,6 @@ public class PaddedIntArray implements IntArray {
         word >>>= bitsPerCell;
       }
     }
-  }
-
-  /**
-   * Copies the contents of this array into an {@link UnpaddedIntArray}. The resulting array has the
-   * same {@link #size()} and {@link #maxValue()}.
-   *
-   * @see UnpaddedIntArray
-   */
-  public UnpaddedIntArray toUnpadded() {
-    UnpaddedIntArray unpadded = new UnpaddedIntArray(size, maxValue);
-    forEach(unpadded::set);
-    return unpadded;
   }
 
   /**

@@ -17,6 +17,20 @@ import me.nullicorn.ooze.serialize.OozeSerializable;
 public class UnpaddedIntArray implements IntArray, OozeSerializable {
 
   /**
+   * Creates an unpadded array with the same contents, {@link IntArray#size() size} and {@link
+   * IntArray#maxValue() maximum value} as the {@code source} array.
+   */
+  public static UnpaddedIntArray fromIntArray(IntArray source) {
+    if (source instanceof UnpaddedIntArray) {
+      return (UnpaddedIntArray) source;
+    }
+
+    UnpaddedIntArray newArr = new UnpaddedIntArray(source.size(), source.maxValue());
+    source.forEach(newArr::set);
+    return newArr;
+  }
+
+  /**
    * Performs the {@link #get(int)} operation on an unpadded int array independent of its {@link
    * UnpaddedIntArray wrapper} object. This allows new arrays to be read directly, such as when
    * resizing.

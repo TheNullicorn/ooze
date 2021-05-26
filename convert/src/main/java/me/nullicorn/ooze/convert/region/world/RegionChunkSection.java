@@ -1,9 +1,9 @@
 package me.nullicorn.ooze.convert.region.world;
 
 import lombok.Getter;
-import me.nullicorn.ooze.storage.PaddedIntArray;
 import me.nullicorn.ooze.serialize.IntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
+import me.nullicorn.ooze.storage.PaddedIntArray;
 import me.nullicorn.ooze.storage.PalettedVolume;
 import me.nullicorn.ooze.world.BlockState;
 
@@ -44,14 +44,7 @@ public class RegionChunkSection implements PalettedVolume<BlockPalette, PaddedIn
     }
 
     this.palette = palette;
-
-    if (storage instanceof PaddedIntArray) {
-      this.storage = (PaddedIntArray) storage;
-    } else {
-      PaddedIntArray compact = new PaddedIntArray(storage.size(), storage.maxValue());
-      storage.forEach(compact::set);
-      this.storage = compact;
-    }
+    this.storage = PaddedIntArray.fromIntArray(storage);
   }
 
   @Override

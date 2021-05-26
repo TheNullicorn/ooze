@@ -167,7 +167,7 @@ public class RegionChunk implements Chunk {
 
           // Merge the section's palette into the chunk's, and update the section's block data
           // accordingly.
-          UnpaddedIntArray storage = section.getStorage().toUnpadded();
+          UnpaddedIntArray storage = UnpaddedIntArray.fromIntArray(section.getStorage());
           globalPalette.addAll(section.getPalette()).upgrade(storage);
           sectionStorage.add(storage);
         }
