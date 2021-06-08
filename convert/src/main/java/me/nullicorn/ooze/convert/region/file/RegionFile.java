@@ -164,6 +164,6 @@ public class RegionFile implements ChunkSource {
       // Only Zlib needs checked, NBTReader automatically takes care of Gzip.
       chunkStream = new InflaterInputStream(chunkStream);
     }
-    return NBTReader.read(chunkStream);
+    return NBTReader.read(chunkStream, true, true);
   }
 }

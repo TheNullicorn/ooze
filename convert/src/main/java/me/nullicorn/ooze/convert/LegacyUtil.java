@@ -78,7 +78,7 @@ public final class LegacyUtil {
     highestCompoundId = -1;
     try {
       for (Entry<String, JsonElement> entry : jsonBlockMap.getAsJsonObject().entrySet()) {
-        NBTCompound rawState = SNBTReader.readCompound(entry.getValue().getAsString());
+        NBTCompound rawState = SNBTReader.readCompound(entry.getValue().getAsString(), true, true);
 
         int legacy = Integer.parseInt(entry.getKey());
         BlockState modern = BlockState.fromNBT(rawState);

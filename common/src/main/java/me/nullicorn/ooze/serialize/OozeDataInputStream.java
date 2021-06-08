@@ -122,7 +122,7 @@ public class OozeDataInputStream extends DataInputStream {
 
       // Read the block's properties (if it has any).
       NBTCompound properties = hasProperties
-          ? NBTReader.read(this)
+          ? NBTReader.read(this, true, true)
           : null;
 
       // Add the state to the palette.
@@ -164,7 +164,7 @@ public class OozeDataInputStream extends DataInputStream {
     boolean hasData = readBoolean();
 
     if (hasData) {
-      return NBTReader.read(new ByteArrayInputStream(readCompressed()));
+      return NBTReader.read(new ByteArrayInputStream(readCompressed()), true, true);
     }
     return null;
   }

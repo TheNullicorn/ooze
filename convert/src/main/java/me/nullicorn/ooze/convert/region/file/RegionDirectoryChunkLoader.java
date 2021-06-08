@@ -130,7 +130,7 @@ public class RegionDirectoryChunkLoader implements ChunkSource {
 
     if (chunkFile.isFile()) {
       byte[] chunkData = Files.readAllBytes(chunkFile.toPath());
-      return NBTReader.read(new ByteArrayInputStream(chunkData));
+      return NBTReader.read(new ByteArrayInputStream(chunkData), true, true);
     }
 
     return null;

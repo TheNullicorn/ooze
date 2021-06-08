@@ -41,7 +41,7 @@
       <dependency>
         <groupId>com.github.TheNullicorn</groupId>
         <artifactId>Nedit</artifactId>
-        <version>v1.1.1</version>
+        <version>v1.2.0</version>
       </dependency>
 
       <!-- Zstd Compression -->
