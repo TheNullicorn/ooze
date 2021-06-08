@@ -2,10 +2,8 @@ package me.nullicorn.ooze.world;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
@@ -166,24 +164,24 @@ public class OozeLevel implements BoundedLevel {
     out.writeShort(depth);
 
     // Generate the chunk mask.
-    Chunk[] writtenChunks = new Chunk[width * depth];
-    BitSet chunkMask = new BitSet(width * depth);
+    Chunk[] chunksToWrite = new Chunk[width * depth];
+    BitSet chunkMask = new BitSet(chunksToWrite.length);
     chunks.values().forEach(chunk -> {
       if (!chunk.isEmpty()) {
-        int chunkIndex = calculateChunkMaskIndex(chunk);
+        int chunkX = chunk.getLocation().getX();
+        int chunkZ = chunk.getLocation().getZ();
+
+        int chunkIndex = ((chunkX - lowChunkX) * getDepth()) + (chunkZ - lowChunkZ);
         chunkMask.set(chunkIndex, true);
-        writtenChunks[chunkIndex] = chunk;
+        chunksToWrite[chunkIndex] = chunk;
       }
     });
     out.writeBitSet(chunkMask, (int) Math.ceil(width * depth / (double) Byte.SIZE));
 
-    // Sort chunks by order of appearance in the chunk mask.
-    Arrays.sort(writtenChunks, Comparator.comparingInt(this::calculateChunkMaskIndex));
-
     // Compress & write chunk data in order.
     ByteArrayOutputStream chunkBytesOut = new ByteArrayOutputStream();
     OozeDataOutputStream chunkDataOut = new OozeDataOutputStream(chunkBytesOut);
-    for (Chunk chunk : writtenChunks) {
+    for (Chunk chunk : chunksToWrite) {
       if (chunk != null) {
         chunk.serialize(chunkDataOut);
       }
@@ -194,15 +192,6 @@ public class OozeLevel implements BoundedLevel {
     out.writeOptionalNBT(!blockEntities.isEmpty(), "BlockEntities", blockEntities);
     out.writeOptionalNBT(!entities.isEmpty(), "Entities", entities);
     out.writeOptionalNBT(!customStorage.isEmpty(), "Custom", customStorage);
-  }
-
-  /**
-   * @return The index in the chunk mask where the provided {@code chunk}'s state can be found.
-   */
-  private int calculateChunkMaskIndex(Chunk chunk) {
-    int chunkX = chunk.getLocation().getX();
-    int chunkZ = chunk.getLocation().getZ();
-    return ((chunkX - lowChunkX) * getDepth()) + (chunkZ - lowChunkZ);
   }
 
   /**
