@@ -13,8 +13,8 @@ import org.jetbrains.annotations.NotNull;
  * state is identified by a positive integer, and no state or identifier can be used more than once
  * at any given time in the same palette.
  * <p>
- * When used in conjunction with an {@link me.nullicorn.ooze.serialize.IntArray integer array} or
- * similar structure, it provides a compact means of storing states for large volumes of blocks.
+ * When used in conjunction with an {@link IntArray integer array} or similar structure, it provides
+ * a compact means of storing states for large volumes of blocks.
  *
  * @author Nullicorn
  */

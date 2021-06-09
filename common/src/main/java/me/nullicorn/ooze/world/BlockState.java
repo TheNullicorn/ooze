@@ -20,24 +20,6 @@ public class BlockState {
   public static final BlockState DEFAULT = new BlockState(new ResourceLocation("air"));
 
   /**
-   * Constructs a block state from its serialized NBT format.
-   *
-   * @return The deserialized block state.
-   * @throws IllegalArgumentException If the block state does not contain a {@code Name}, or if the
-   *                                  name cannot be parsed.
-   * @see #toNBT() The accepted NBT format
-   */
-  public static BlockState fromNBT(NBTCompound stateData) {
-    String name = stateData.getString("Name", null);
-    NBTCompound properties = stateData.getCompound("Properties");
-
-    if (name == null) {
-      throw new IllegalArgumentException("Unable to deserialize block state: " + stateData);
-    }
-    return new BlockState(ResourceLocation.fromString(name), properties);
-  }
-
-  /**
    * The block's main identifier (e.g. "stone", "piston", etc).
    */
   @Getter
@@ -78,33 +60,15 @@ public class BlockState {
     return path.equals("air") || path.equals("cave_air") || path.equals("void_air");
   }
 
-  /**
-   * The following format is used:
-   * <pre>
-   *   {@code
-   *   {
-   *      Name: String,
-   *      Properties: {
-   *        [property]: String
-   *      }?
-   *   }
-   *   }
-   * </pre>
-   *
-   * @return A new NBT compound representing this block state.
-   */
-  public NBTCompound toNBT() {
-    NBTCompound stateData = new NBTCompound();
-    stateData.put("Name", name.toString());
-    if (properties != null) {
-      stateData.put("Properties", properties);
-    }
-    return stateData;
-  }
-
   @Override
   public String toString() {
-    return toNBT().toString();
+    StringBuilder builder = new StringBuilder();
+    builder.append("{name: \"").append(name).append("\"");
+    if (hasProperties()) {
+      builder.append(", properties: ").append(properties);
+    }
+    builder.append("}");
+    return builder.toString();
   }
 
   @Override

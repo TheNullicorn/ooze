@@ -82,14 +82,14 @@ public class ResourceLocation {
   }
 
   public ResourceLocation(String namespace, String path) {
-    if (namespace != DEFAULT_NAMESPACE) {
+    // Only validate namespace if it isn't the default, which should already be valid.
+    if (!namespace.equals(DEFAULT_NAMESPACE)) {
       for (int i = 0; i < namespace.length(); i++) {
         if (!isValidNamespaceChar(namespace.charAt(i))) {
           throw new IllegalArgumentException("Invalid namespace: \"" + namespace + "\"");
         }
       }
     }
-
 
     for (int i = 0; i < path.length(); i++) {
       if (!isValidPathChar(path.charAt(i))) {

@@ -10,6 +10,7 @@ import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.nedit.type.TagType;
+import me.nullicorn.ooze.storage.BlockVolume;
 import me.nullicorn.ooze.Location2D;
 import me.nullicorn.ooze.serialize.OozeDataOutputStream;
 import org.jetbrains.annotations.Nullable;
@@ -27,16 +28,29 @@ public class OozeLevel implements BoundedLevel {
   private static final int MIN_CHUNK_Z = Short.MIN_VALUE;
   private static final int MAX_CHUNK_Z = Short.MAX_VALUE;
 
-  private final Map<Location2D, Chunk> chunks   = new HashMap<>();
-  @Getter
-  private final NBTList                entities = new NBTList(TagType.COMPOUND);
-  @Getter
-  private final NBTList                blockEntities = new NBTList(TagType.COMPOUND);
-  @Getter
-  private final NBTCompound            customStorage = new NBTCompound();
+  /**
+   * @return Whether or not the {@code volume}'s dimensions allow for it to be used as a chunk.
+   */
+  private static boolean canVolumeBeChunk(BlockVolume volume) {
+    return volume != null
+           && volume.getWidth() == OozeChunk.WIDTH
+           && volume.getDepth() == OozeChunk.DEPTH
+           && volume.getHeight() % OozeChunk.SECTION_HEIGHT == 0;
+  }
 
-  // Highest and lowest chunk coordinates.
-  // Used to ensure new chunks are in bounds.
+  // All chunks in the level, mapped by their x and z chunk coordinates (16 blocks per unit).
+  private final Map<Location2D, Chunk> chunks = new HashMap<>();
+
+  @Getter
+  private final NBTList     entities      = new NBTList(TagType.COMPOUND);
+  @Getter
+  private final NBTList     blockEntities = new NBTList(TagType.COMPOUND);
+  @Getter
+  private final NBTCompound customStorage = new NBTCompound();
+
+  // The highest and lowest chunk coordinates in the level. These are initialized the opposite way
+  // so that the first chunk stored will always have the highest and lowest coordinates on both
+  // axes.
   private int lowChunkX  = MAX_CHUNK_X;
   private int highChunkX = MIN_CHUNK_X;
   private int lowChunkZ  = MAX_CHUNK_Z;
@@ -44,22 +58,31 @@ public class OozeLevel implements BoundedLevel {
 
   @Override
   public int getLowestChunkX() {
-    return lowChunkX;
+    return chunks.isEmpty()
+        ? 0
+        : lowChunkX;
   }
 
   @Override
   public int getLowestChunkZ() {
-    return lowChunkZ;
+    return chunks.isEmpty()
+        ? 0
+        : lowChunkZ;
   }
 
   @Override
   public int getWidth() {
-    return highChunkX - lowChunkX + 1;
+    return chunks.isEmpty()
+        ? 0
+        : highChunkX - lowChunkX + 1;
   }
 
   @Override
   public int getDepth() {
-    return highChunkZ - lowChunkZ + 1;
+    // If low > high, then no chunks have been stored and the world has a depth of zero.
+    return chunks.isEmpty()
+        ? 0
+        : highChunkZ - lowChunkZ + 1;
   }
 
   @Override
@@ -87,7 +110,7 @@ public class OozeLevel implements BoundedLevel {
         continue;
       }
 
-      // Convert the entity's coords to chunk coords.
+      // Convert the entity's coordinates to chunk coordinates.
       int entityChunkX = (int) Math.floor(pos.getDouble(0) / 16);
       int entityChunkZ = (int) Math.floor(pos.getDouble(2) / 16);
       if (entityChunkX == chunkX && entityChunkZ == chunkZ) {
@@ -95,6 +118,25 @@ public class OozeLevel implements BoundedLevel {
       }
     }
     return entitiesInChunk;
+  }
+
+  public void setEntities(Location2D chunkLoc, @Nullable NBTList newEntities) {
+    setEntities(chunkLoc.getX(), chunkLoc.getZ(), newEntities);
+  }
+
+  public void setEntities(int chunkX, int chunkZ, @Nullable NBTList newEntities) {
+    TagType contentType = (newEntities == null || newEntities.isEmpty())
+        ? null
+        : newEntities.getContentType();
+
+    if (contentType != null && contentType != TagType.COMPOUND) {
+      throw new IllegalArgumentException("Entity data cannot be " + newEntities.getContentType());
+    }
+
+    entities.removeAll(getEntities(chunkX, chunkZ));
+    if (contentType != null) {
+      entities.addAll(newEntities);
+    }
   }
 
   @Override
@@ -124,10 +166,34 @@ public class OozeLevel implements BoundedLevel {
     return blockEntitiesInChunk;
   }
 
+  public void setBlockEntities(Location2D chunkLoc, @Nullable NBTList newBlockEntities) {
+    setBlockEntities(chunkLoc.getX(), chunkLoc.getZ(), newBlockEntities);
+  }
+
+  public void setBlockEntities(int chunkX, int chunkZ, @Nullable NBTList newBlockEntities) {
+    TagType contentType = (newBlockEntities == null || newBlockEntities.isEmpty())
+        ? null
+        : newBlockEntities.getContentType();
+
+    if (contentType != null && contentType != TagType.COMPOUND) {
+      throw new IllegalArgumentException("Block entity data cannot be " +
+                                         newBlockEntities.getContentType());
+    }
+
+    blockEntities.removeAll(getEntities(chunkX, chunkZ));
+    if (contentType != null) {
+      blockEntities.addAll(newBlockEntities);
+    }
+  }
+
   @Override
   public void storeChunk(Chunk chunk) {
-    if (!isChunkInBounds(chunk.getLocation())) {
-      throw new IllegalArgumentException("Chunk at " + chunk.getLocation() + " is out of bounds");
+    if (chunk == null) {
+      throw new IllegalArgumentException("Cannot store null chunk in level");
+    } else if (!canVolumeBeChunk(chunk)) {
+      throw new IllegalArgumentException("Chunk " + chunk.getLocation() + " has an invalid volume");
+    } else if (!isChunkInBounds(chunk.getLocation())) {
+      throw new IllegalArgumentException("Chunk " + chunk.getLocation() + " is out of bounds");
     }
 
     int chunkX = chunk.getLocation().getX();
@@ -158,8 +224,8 @@ public class OozeLevel implements BoundedLevel {
     out.writeHeader();
 
     // Write world size & location.
-    out.writeShort(lowChunkX);
-    out.writeShort(lowChunkZ);
+    out.writeShort(getLowestChunkX()); // Use the getters for both of these since they check if the
+    out.writeShort(getLowestChunkZ()); // level is empty for us.
     out.writeShort(width);
     out.writeShort(depth);
 

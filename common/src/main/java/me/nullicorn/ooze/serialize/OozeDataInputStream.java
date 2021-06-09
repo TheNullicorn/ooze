@@ -82,13 +82,17 @@ public class OozeDataInputStream extends DataInputStream {
 
   /**
    * Reads however many bytes from the stream are needed to create a BitSet with {@code length}
-   * bits. The number of bytes read is equal to {@code Math.ceil(length / (double) Byte.SIZE)}.
+   * bits.
+   * <p><br>
+   * The actual number of bytes read is equal to
+   * <pre>(int) Math.ceil((float) length / Byte.SIZE)</pre>
    *
    * @param length The length of the bit set, in bits.
    * @throws IOException If the stream cannot be read.
    */
   public BitSet readBitSet(int length) throws IOException {
-    return BitSet.valueOf(readBytes((int) Math.ceil(length / (double) Byte.SIZE)));
+    int lengthInBytes = (int) Math.ceil((float) length / Byte.SIZE);
+    return BitSet.valueOf(readBytes(lengthInBytes));
   }
 
   /**

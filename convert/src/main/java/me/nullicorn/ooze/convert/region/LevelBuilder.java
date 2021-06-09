@@ -5,43 +5,26 @@ import java.util.HashSet;
 import java.util.Set;
 import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
-import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.convert.ConversionException;
-import me.nullicorn.ooze.convert.LegacyUtil;
 import me.nullicorn.ooze.convert.region.file.ChunkSource;
-import me.nullicorn.ooze.storage.BitCompactIntArray;
-import me.nullicorn.ooze.storage.BlockPalette;
-import me.nullicorn.ooze.storage.PaletteUpgrader;
-import me.nullicorn.ooze.storage.WordedIntArray;
-import me.nullicorn.ooze.world.BlockState;
-import me.nullicorn.ooze.world.OozeChunk;
-import me.nullicorn.ooze.world.OozeChunkSection;
+import me.nullicorn.ooze.serialize.nbt.ChunkCodec;
+import me.nullicorn.ooze.serialize.nbt.ChunkCodec.PooledSectionCodecProvider;
 import me.nullicorn.ooze.world.OozeLevel;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * A tool for constructing levels by allowing chunks to be added individually or in groups.
  *
  * @author Nullicorn
  */
-@SuppressWarnings("UnusedReturnValue")
 public class LevelBuilder {
 
   // TODO: 5/21/21 Make entities toggleable.
   // TODO: 5/21/21 Provide access to "custom" NBT data.
 
-  // The data version when sections began using palettes instead of absolute block IDs.
-  private static final int PALETTE_ADDED_DATA_VERSION = 1451;
-
-  // The data version when values in the "BlockStates" array could no longer be stored across
-  // multiple longs.
-  private static final int BLOCKS_PADDED_DATA_VERSION = 2527;
-
   @Getter
-  final ChunkSource source;
+  private final ChunkSource       source;
+  private final Set<Location2D>   chunksToLoad;
 
-  final Set<Location2D> chunksToLoad;
 
   public LevelBuilder(ChunkSource source) {
     this.source = source;
@@ -52,6 +35,7 @@ public class LevelBuilder {
    * Adds the chunk at chunk coordinates ({@code chunkX}, {@code chunkZ}) to the world, if it exists
    * in the {@link #getSource() source}.
    */
+  @SuppressWarnings("UnusedReturnValue")
   public LevelBuilder addChunk(int chunkX, int chunkZ) {
     return addChunk(new Location2D(chunkX, chunkZ));
   }
@@ -104,192 +88,15 @@ public class LevelBuilder {
    */
   public OozeLevel build() throws IOException {
     OozeLevel level = new OozeLevel();
+    ChunkCodec chunkCodec = new ChunkCodec(level, new PooledSectionCodecProvider());
+
     for (Location2D chunkPos : chunksToLoad) {
       NBTCompound chunkData = source.loadChunk(chunkPos);
       if (chunkData != null) {
-        try {
-          level.storeChunk(createChunk(chunkData));
-        } catch (IllegalArgumentException e) {
-          throw new IllegalStateException("Cannot build level with out-of-bound chunk", e);
-        }
+        level.storeChunk(chunkCodec.decode(chunkData));
       }
     }
+
     return level;
-  }
-
-  // Viewer beware, you're in for a scare...
-  // Chunk NBT deserialization vvv
-
-  /**
-   * Constructs a chunk from its serialized NBT format.
-   *
-   * @throws ConversionException If the chunk data is corrupted.
-   */
-  private OozeChunk createChunk(NBTCompound data) throws ConversionException {
-    // Version that the chunk was last saved in.
-    int dataVersion = data.getInt("DataVersion", 99);
-
-    data = data.getCompound("Level");
-    if (data == null) {
-      throw new ConversionException("Chunk data is missing \"Level\" field");
-    }
-
-    // Absolute position of the chunk.
-    if (!data.containsKey("xPos") || !data.containsKey("zPos")) {
-      throw new ConversionException("Chunk data is missing location information");
-    }
-    Location2D chunkPos = new Location2D(data.getInt("xPos", 0), data.getInt("zPos", 0));
-
-    // Store the chunk's 16x16x16 block sections.
-    OozeChunk chunk = new OozeChunk(chunkPos, dataVersion);
-    NBTList sections = data.getList("Sections");
-    if (sections != null) {
-      for (Object element : sections) {
-        if (!(element instanceof NBTCompound)) {
-          continue;
-        }
-
-        NBTCompound sectionData = (NBTCompound) element;
-        if (!sectionData.containsKey("Y")) {
-          throw new ConversionException("Chunk section is missing altitude value");
-        }
-
-        // Ignore sections at invalid heights.
-        int altitude = sectionData.getInt("Y", -1);
-        if (altitude >= 0 && altitude < OozeChunk.SECTIONS_PER_CHUNK) {
-          chunk.setSection(altitude, createChunkSection(sectionData, dataVersion));
-        }
-      }
-    }
-
-    // Store the chunk's entities.
-    NBTList entities = data.getList("Entities");
-    if (entities != null) {
-      chunk.getEntities().addAll(entities);
-    }
-
-    // Store the chunk's block entities.
-    NBTList blockEntities = data.getList("TileEntities");
-    if (blockEntities != null) {
-      chunk.getBlockEntities().addAll(blockEntities);
-    }
-
-    return chunk;
-  }
-
-  /**
-   * Constructs chunk section from its serialized NBT format.
-   *
-   * @return A chunk section containing the blocks from the {@code data} source, or {@code null} if
-   * the data represents an empty section.
-   * @throws ConversionException If the section contains corrupted data.
-   */
-  @Nullable
-  private OozeChunkSection createChunkSection(NBTCompound data, int dataVersion)
-      throws ConversionException {
-
-    if (dataVersion > PALETTE_ADDED_DATA_VERSION) {
-      // Section uses the modern, paletted format.
-
-      // Ensure the section isn't empty.
-      if (!data.containsKey("Palette")
-          || !data.containsKey("BlockStates")) {
-        return null;
-      }
-
-      // noinspection ConstantConditions
-      BlockPalette palette = createPalette(data.getList("Palette"));
-      WordedIntArray storage = WordedIntArray.fromRaw(
-          data.getLongArray("BlockStates"),
-          4096,
-          palette.size() - 1,
-          dataVersion < BLOCKS_PADDED_DATA_VERSION);
-      return new OozeChunkSection(palette, storage);
-    } else {
-      // Section uses pre-1.13, absolute storage format.
-      return createLegacySection(data);
-    }
-  }
-
-  /**
-   * Same as {@link #createChunkSection(NBTCompound, int)}, but attempts to read the chunk data
-   * using the legacy storage format. This format was used before Minecraft 1.13 and uses absolute
-   * block IDs instead of a palette.
-   */
-  @Nullable
-  private OozeChunkSection createLegacySection(NBTCompound data) throws ConversionException {
-    byte[] rawBlocks = data.getByteArray("Blocks");
-    byte[] rawOverflowBlocks = data.getByteArray("Add");
-    byte[] rawData = data.getByteArray("Data");
-
-    // Ensure the section isn't empty & the block data isn't corrupted.
-    if (rawBlocks == null) {
-      return null;
-    } else if (rawBlocks.length != 4096
-               || (rawData != null && rawData.length != 2048)
-               || (rawOverflowBlocks != null && rawOverflowBlocks.length != 2048)) {
-      throw new ConversionException("Chunk contains corrupted block data");
-    }
-
-    NibbleArray overflowArray = rawOverflowBlocks != null
-        ? NibbleArray.fromBytes(rawOverflowBlocks, 4096)
-        : null;
-
-    NibbleArray stateArray = rawData != null
-        ? NibbleArray.fromBytes(rawData, 4096)
-        : null;
-
-    int maxState = LegacyUtil.getHighestCompoundState();
-    BlockPalette palette = new BlockPalette();
-    PaletteUpgrader upgrader = new PaletteUpgrader(maxState);
-
-    // Compact array is used so that it can be passed to upgrader#upgrade()
-    BitCompactIntArray tempStorage = new BitCompactIntArray(4096, maxState);
-    for (int i = 0; i < rawBlocks.length; i++) {
-      int blockId = rawBlocks[i];
-      if (overflowArray != null) {
-        blockId |= overflowArray.get(i) << 8;
-      }
-      int blockData = stateArray != null ? stateArray.get(i) : 0;
-
-      // Map the legacy ID to its new palette index.
-      BlockState state = LegacyUtil.getBlockStateFromLegacy(blockId, blockData);
-      tempStorage.set(i, blockId);
-      upgrader.registerChange(blockId, palette.addState(state));
-    }
-    upgrader.lock();
-
-    // Apply the legacy->paletted ID change.
-    upgrader.upgrade(tempStorage);
-    WordedIntArray storage = new WordedIntArray(tempStorage.size(), tempStorage.maxValue());
-
-    return new OozeChunkSection(palette, storage);
-  }
-
-  /**
-   * Constructs a new block palette from its serialized NBT form. The first item in the provided
-   * list is used as the palette's default state.
-   */
-  private BlockPalette createPalette(NBTList data) throws ConversionException {
-    BlockPalette palette = null;
-    boolean isFirstElement = true;
-
-    for (Object element : data) {
-      if (!(element instanceof NBTCompound)) {
-        throw new ConversionException("Cannot create BlockState from " + element.getClass());
-      }
-
-      BlockState state = BlockState.fromNBT((NBTCompound) element);
-
-      // Use the first state in the list as the palette's default.
-      if (isFirstElement) {
-        palette = new BlockPalette(state);
-        isFirstElement = false;
-      } else {
-        palette.addState(state);
-      }
-    }
-
-    return palette == null ? new BlockPalette() : palette;
   }
 }

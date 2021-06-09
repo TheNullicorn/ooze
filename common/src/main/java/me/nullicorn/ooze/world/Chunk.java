@@ -1,11 +1,12 @@
 package me.nullicorn.ooze.world;
 
-import me.nullicorn.ooze.BlockVolume;
+import me.nullicorn.ooze.storage.BlockVolume;
 import me.nullicorn.ooze.Location2D;
 import me.nullicorn.ooze.serialize.OozeSerializable;
 
 /**
- * A 16x256x16 volume of blocks inside a Minecraft world.
+ * A column of blocks inside a Minecraft world, whose width and depth are both 16 blocks, and whose
+ * height is a multiple of 16 blocks.
  *
  * @author Nullicorn
  */

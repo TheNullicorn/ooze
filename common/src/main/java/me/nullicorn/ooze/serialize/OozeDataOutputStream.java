@@ -5,7 +5,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Arrays;
 import java.util.BitSet;
 import me.nullicorn.nedit.NBTWriter;
 import me.nullicorn.nedit.type.NBTCompound;
@@ -75,16 +74,26 @@ public class OozeDataOutputStream extends DataOutputStream {
   }
 
   /**
-   * Writes a BitSet to the underlying stream, padding it to {@code byteCount} if it is shorter than
-   * that many bytes, and trimming it if it is longer.
+   * Writes a BitSet to the underlying stream using however bytes are needed to hold {@code
+   * bitCount} bits. If the provided BitSet is shorter or longer than the desired {@code bitCount},
+   * the tail will be padded with unset bits or trimmed respectively.
+   * <p><br>
+   * The number of bytes actually written is equal to
+   * <pre>(int) Math.ceil((float) bitCount / Byte.SIZE)</pre>
    *
    * @throws IOException If the bytes could not be written.
    */
-  public void writeBitSet(BitSet value, int byteCount) throws IOException {
+  public void writeBitSet(BitSet value, int bitCount) throws IOException {
+    int bytesNeeded = (int) Math.ceil((float) bitCount / Byte.SIZE);
     byte[] bytes = value.toByteArray();
-    if (bytes.length != byteCount) {
-      bytes = Arrays.copyOf(bytes, byteCount);
+
+    // Pad / trim the array to the desired bitCount.
+    if (bytes.length != bytesNeeded) {
+      byte[] temp = new byte[bytesNeeded];
+      System.arraycopy(bytes, 0, temp, 0, Math.min(temp.length, bytes.length));
+      bytes = temp;
     }
+
     write(bytes);
   }
 

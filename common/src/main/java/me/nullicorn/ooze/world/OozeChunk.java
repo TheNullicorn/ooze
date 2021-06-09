@@ -2,29 +2,43 @@ package me.nullicorn.ooze.world;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import lombok.Getter;
-import me.nullicorn.nedit.type.NBTList;
-import me.nullicorn.nedit.type.TagType;
 import me.nullicorn.ooze.Location2D;
 import me.nullicorn.ooze.serialize.OozeDataOutputStream;
 import me.nullicorn.ooze.storage.BitCompactIntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
+import me.nullicorn.ooze.storage.BlockVolume;
 import me.nullicorn.ooze.storage.PalettedVolume;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * @author Nullicorn
  */
-public class OozeChunk implements Chunk {
+public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
 
-  static final         int WIDTH              = 16;
-  static final         int DEPTH              = 16;
-  static final         int SECTION_HEIGHT     = 16;
-  public static final  int SECTIONS_PER_CHUNK = 16;
-  private static final int HEIGHT             = SECTION_HEIGHT * SECTIONS_PER_CHUNK;
+  static final int WIDTH          = 16;
+  static final int DEPTH          = 16;
+  static final int SECTION_HEIGHT = 16;
+
+  /**
+   * @return Whether or not the {@code volume}'s dimensions allow for it to be a section in a chunk.
+   */
+  private static boolean canVolumeBeSection(BlockVolume volume) {
+    return volume != null
+           && volume.getMinX() == 0
+           && volume.getMinY() == 0
+           && volume.getMinZ() == 0
+           && volume.getWidth() == WIDTH
+           && volume.getHeight() == DEPTH
+           && volume.getDepth() == SECTION_HEIGHT;
+  }
 
   @Getter
   private final Location2D location;
@@ -34,71 +48,66 @@ public class OozeChunk implements Chunk {
 
   private final BlockPalette palette;
 
-  // Individual sections in this array may be null if they are empty, though empty sections can also
-  // be present.
-  private final BitCompactIntArray[] sections;
+  // Individual sections in this set may be null if they are empty, though empty sections can also
+  // be present. Each section should have a unique altitude relative to other sections in the chunk.
+  private final Set<OozeChunkSection> sections;
 
-  /*
-   * Simple cache for checking if a section is entirely air blocks or not. `isSectionChecked[]`
-   * indicates whether or not each section's `isSectionEmpty[]` value is valid. If not,
-   * `isSectionEmpty[]` should be recalculated for that section so it can be marked as checked. Null
-   * sections should automatically be marked as both empty and checked.
-   */
-  private final boolean[] isSectionEmpty;
-  private final boolean[] isSectionChecked;
-
-  /**
-   * Serialized data for any entities in the chunk.
-   */
-  @Getter
-  private final NBTList entities;
-
-  /**
-   * Serialized data for any block entities in the chunk.
-   */
-  @Getter
-  private final NBTList blockEntities;
+  // The lowest and highest altitudes of any section in the chunk. These are initialized the
+  // opposite  way so that when comparing, the first section added should always causes these to
+  // change.
+  private int lowestSectionAltitude  = Integer.MAX_VALUE;
+  private int highestSectionAltitude = Integer.MIN_VALUE;
 
   public OozeChunk(Location2D location, int dataVersion) {
     this.location = location;
     this.dataVersion = dataVersion;
     palette = new BlockPalette();
-    entities = new NBTList(TagType.COMPOUND);
-    blockEntities = new NBTList(TagType.COMPOUND);
+    sections = new TreeSet<>(Comparator.comparingInt(OozeChunkSection::getAltitude));
+  }
 
-    sections = new BitCompactIntArray[SECTIONS_PER_CHUNK];
-    isSectionEmpty = new boolean[sections.length];
-    isSectionChecked = new boolean[sections.length];
-
-    // All sections start out null, so we know that they are all empty.
-    Arrays.fill(isSectionEmpty, true);
-    Arrays.fill(isSectionChecked, true);
+  /**
+   * @param altitude The distance between the bottom of the chunk (y=0) and the section's base,
+   *                 measured in 16-block units.
+   * @return The volume used to store blocks between {@code altitude} and {@code altitude + 1}, or
+   * {@code null} if no data exists for that section of blocks.
+   */
+  @Nullable
+  public PalettedVolume getSection(int altitude) {
+    for (OozeChunkSection section : sections) {
+      if (section.getAltitude() == altitude) {
+        return section;
+      }
+    }
+    return null;
   }
 
   /**
    * Sets the block data for a 16x16x16 region of the chunk.
    *
-   * @param altitude How high the section's base is from the bottom of the chunk, in units of 16
-   *                 blocks.
+   * @param altitude The distance between the bottom of the chunk (y=0) and the section's base,
+   *                 measured in 16-block units.
+   * @param section  The storage container to use for blocks between {@code altitude} and {@code
+   *                 altitude + 1}, or {@code null} to remove any existing storage at that altitude,
+   *                 if present.
    * @throws IndexOutOfBoundsException If the section's altitude is out of the chunk's boundaries.
    */
   public void setSection(int altitude, @Nullable PalettedVolume section) {
-    if (altitude < 0 || altitude >= SECTIONS_PER_CHUNK) {
-      throw new IndexOutOfBoundsException("Cannot store chunk section at altitude " + altitude);
-    }
+    if (canVolumeBeSection(section)) {
+      // Insert the section.
+      sections.add(section instanceof OozeChunkSection
+          ? (OozeChunkSection) section
+          : new OozeChunkSection(altitude, section.getPalette(), section.getStorage()));
 
-    if (section == null) {
-      // Null sections are marked as empty.
-      sections[altitude] = null;
-      isSectionEmpty[altitude] = true;
-      isSectionChecked[altitude] = true;
-    } else {
-      // Upgrade the section's storage to use the entire chunk's palette.
-      BitCompactIntArray storage = BitCompactIntArray.fromIntArray(section.getStorage());
-      palette.addAll(section.getPalette()).upgrade(storage);
-
-      sections[altitude] = storage;
-      isSectionChecked[altitude] = false; // Tells us to recalculate isEmpty later.
+      // Update the lowest & highest known altitudes accordingly.
+      if (altitude < lowestSectionAltitude) {
+        lowestSectionAltitude = altitude;
+      } else if (altitude > highestSectionAltitude) {
+        highestSectionAltitude = altitude;
+      }
+    } else if (section == null) {
+      // If null, remove any sections at the provided altitude.
+      sections.removeIf(existingSection -> existingSection.getAltitude() == altitude);
+      updateSectionBounds();
     }
   }
 
@@ -109,7 +118,9 @@ public class OozeChunk implements Chunk {
 
   @Override
   public int getHeight() {
-    return HEIGHT;
+    return sections.isEmpty()
+        ? 0
+        : SECTION_HEIGHT * (highestSectionAltitude - lowestSectionAltitude);
   }
 
   @Override
@@ -124,7 +135,9 @@ public class OozeChunk implements Chunk {
 
   @Override
   public int getMinY() {
-    return 0;
+    return sections.isEmpty()
+        ? 0
+        : lowestSectionAltitude * SECTION_HEIGHT;
   }
 
   @Override
@@ -139,65 +152,52 @@ public class OozeChunk implements Chunk {
                                          x + ", " + y + ", " + z + ")");
     }
 
-    BitCompactIntArray section = sections[y / 16];
+    PalettedVolume section = getSection(y / 16);
     if (section == null) {
       return BlockState.DEFAULT;
     }
-    int stateId = section.get(getBlockIndex(x, y % 16, z));
-    return palette.getState(stateId);
+    return section.getBlockAt(x, y % 16, z);
   }
 
   @Override
   public boolean isEmpty() {
-    for (int i = 0; i < sections.length; i++) {
-      if (!isSectionEmpty(i)) {
+    for (OozeChunkSection section : sections) {
+      if (!section.isEmpty()) {
+        // If any section has non-air blocks, the chunk isn't empty either.
         return false;
       }
     }
     return true;
   }
 
-  private boolean isSectionEmpty(int altitude) {
-    // Check if isEmpty is cached for the section.
-    if (isSectionChecked[altitude]) {
-      if (!isSectionEmpty[altitude]) {
-        return false;
-      }
-    } else {
-      // Recalculate isEmpty for the section.
-      BitCompactIntArray section = sections[altitude];
-      for (int blockIndex = 0; blockIndex < section.size(); blockIndex++) {
-        // Check if any block is not air.
-        int stateId = section.get(blockIndex);
-        if (!palette.getState(stateId).isAir()) {
-          isSectionEmpty[altitude] = false;
-          isSectionChecked[altitude] = true;
-          return false;
-        }
-      }
-    }
-
-    // The section is empty.
-    isSectionEmpty[altitude] = true;
-    isSectionChecked[altitude] = true;
-    return true;
+  @NotNull
+  @Override
+  public Iterator<OozeChunkSection> iterator() {
+    return sections.iterator();
   }
 
   @Override
   public void serialize(OozeDataOutputStream out) throws IOException {
     out.writeVarInt(dataVersion);
 
-    // TODO: Write biome list.
+    // TODO: 6/9/21 Add biome support.
+
+    if (sections.isEmpty()) {
+      out.writeVarInt(0);
+      out.writeVarInt(0);
+    }
 
     // Determine which sections are empty.
-    BitSet nonEmptySections = new BitSet(sections.length);
+    BitSet nonEmptySections = new BitSet(highestSectionAltitude - lowestSectionAltitude);
     List<BitCompactIntArray> sectionsToWrite = new ArrayList<>();
-    for (int i = 0; i < sections.length; i++) {
-      if (!isSectionEmpty(i)) {
-        nonEmptySections.set(i);
-        sectionsToWrite.add(sections[i]);
+    for (OozeChunkSection section : sections) {
+      if (!section.isEmpty()) {
+        nonEmptySections.set(section.getAltitude() - lowestSectionAltitude);
+        sectionsToWrite.add(section.getStorage());
       }
     }
+    out.writeVarInt(highestSectionAltitude - lowestSectionAltitude);
+    out.writeVarInt(lowestSectionAltitude);
     out.writeBitSet(nonEmptySections, 2);
 
     // Only write palette & blocks if there is at least 1 non-empty section.
@@ -210,11 +210,17 @@ public class OozeChunk implements Chunk {
   }
 
   /**
-   * @return The index in the storage container where a block at the provided coordinates would be
-   * stored.
+   * Reevaluates {@link #lowestSectionAltitude} and {@link #highestSectionAltitude} according to
+   * which sections in the chunk currently have the highest and lowest altitudes.
    */
-  private int getBlockIndex(int x, int y, int z) {
-    int height = getHeight();
-    return (y * height * height) + (z * getDepth()) + x;
+  private void updateSectionBounds() {
+    lowestSectionAltitude = Integer.MAX_VALUE;
+    highestSectionAltitude = Integer.MIN_VALUE;
+
+    for (OozeChunkSection section : sections) {
+      int altitude = section.getAltitude();
+      lowestSectionAltitude = Math.min(altitude, lowestSectionAltitude);
+      highestSectionAltitude = Math.max(altitude, highestSectionAltitude);
+    }
   }
 }

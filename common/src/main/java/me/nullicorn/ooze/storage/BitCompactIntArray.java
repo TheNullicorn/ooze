@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import me.nullicorn.ooze.BitUtils;
-import me.nullicorn.ooze.serialize.IntArray;
 import me.nullicorn.ooze.serialize.OozeDataOutputStream;
 import me.nullicorn.ooze.serialize.OozeSerializable;
 
@@ -117,7 +116,23 @@ public class BitCompactIntArray implements IntArray, OozeSerializable {
     this.maxValue = maxValue;
     this.bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
     this.cellMask = BitUtils.createBitMask(bitsPerCell);
-    this.data = new byte[BitUtils.bitsToBytes(size * bitsPerCell)];
+    if (maxValue == 0) {
+      this.data = new byte[0];
+    } else {
+      this.data = new byte[BitUtils.bitsToBytes(size * bitsPerCell)];
+    }
+  }
+
+  /**
+   * Copies the contents, size, etc, of an {@code other} array into a new one, such that modifying
+   * one array will not affect the contents of the other.
+   */
+  public BitCompactIntArray(BitCompactIntArray other) {
+    this.data = Arrays.copyOf(other.data, other.data.length);
+    this.size = other.size;
+    this.maxValue = other.maxValue;
+    this.bitsPerCell = other.bitsPerCell;
+    this.cellMask = other.cellMask;
   }
 
   @Override
@@ -126,6 +141,9 @@ public class BitCompactIntArray implements IntArray, OozeSerializable {
       throw new ArrayIndexOutOfBoundsException(index);
     }
 
+    if (maxValue == 0) {
+      return 0;
+    }
     return getInternal(data, bitsPerCell, cellMask, index);
   }
 
@@ -139,6 +157,9 @@ public class BitCompactIntArray implements IntArray, OozeSerializable {
       throw new IllegalArgumentException("Array value must be <= " + maxValue + ": " + value);
     }
 
+    if (maxValue == 0) {
+      return 0;
+    }
     return setInternal(data, bitsPerCell, cellMask, index, value);
   }
 

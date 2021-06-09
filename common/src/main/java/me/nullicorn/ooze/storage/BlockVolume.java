@@ -1,4 +1,4 @@
-package me.nullicorn.ooze;
+package me.nullicorn.ooze.storage;
 
 import me.nullicorn.ooze.world.BlockState;
 
