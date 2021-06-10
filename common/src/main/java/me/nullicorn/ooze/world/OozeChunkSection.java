@@ -1,9 +1,9 @@
 package me.nullicorn.ooze.world;
 
 import lombok.Getter;
-import me.nullicorn.ooze.storage.IntArray;
 import me.nullicorn.ooze.storage.BitCompactIntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
+import me.nullicorn.ooze.storage.IntArray;
 import me.nullicorn.ooze.storage.PalettedVolume;
 
 /**
@@ -32,9 +32,6 @@ public class OozeChunkSection implements PalettedVolume {
     if (storage.size() != STORAGE_SIZE) {
       throw new IllegalArgumentException("Section storage must have exactly " +
                                          STORAGE_SIZE + " indices");
-
-    } else if (storage.maxValue() < palette.size() - 1) {
-      throw new IllegalArgumentException("Block storage is too small for its palette");
     }
 
     this.altitude = altitude;

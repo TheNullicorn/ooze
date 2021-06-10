@@ -32,9 +32,6 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
    */
   private static boolean canVolumeBeSection(BlockVolume volume) {
     return volume != null
-           && volume.getMinX() == 0
-           && volume.getMinY() == 0
-           && volume.getMinZ() == 0
            && volume.getWidth() == WIDTH
            && volume.getHeight() == DEPTH
            && volume.getDepth() == SECTION_HEIGHT;
@@ -87,27 +84,38 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
    * @param altitude The distance between the bottom of the chunk (y=0) and the section's base,
    *                 measured in 16-block units.
    * @param section  The storage container to use for blocks between {@code altitude} and {@code
-   *                 altitude + 1}, or {@code null} to remove any existing storage at that altitude,
-   *                 if present.
-   * @throws IndexOutOfBoundsException If the section's altitude is out of the chunk's boundaries.
+   *                 altitude + 1}.
+   * @throws IllegalArgumentException If the section is null, or if it is not 16x16x16 blocks.
+   * @throws IllegalStateException    If the chunk already has block data for that altitude.
    */
-  public void setSection(int altitude, @Nullable PalettedVolume section) {
-    if (canVolumeBeSection(section)) {
-      // Insert the section.
-      sections.add(section instanceof OozeChunkSection
-          ? (OozeChunkSection) section
-          : new OozeChunkSection(altitude, section.getPalette(), section.getStorage()));
+  public void setSection(int altitude, PalettedVolume section) {
+    if (section == null) {
+      throw new IllegalArgumentException("Cannot set chunk section " +
+                                         altitude + " to null @ " + location);
+    } else if (!canVolumeBeSection(section)) {
+      throw new IllegalArgumentException("Invalid dimensions for section " +
+                                         altitude + " @ " + location);
+    }
 
-      // Update the lowest & highest known altitudes accordingly.
-      if (altitude < lowestSectionAltitude) {
-        lowestSectionAltitude = altitude;
-      } else if (altitude > highestSectionAltitude) {
-        highestSectionAltitude = altitude;
+    // Ensure no section already exists at that altitude.
+    for (OozeChunkSection existingSection : sections) {
+      if (existingSection.getAltitude() == altitude) {
+        throw new IllegalStateException("Duplicate section " + altitude + " @ " + location);
       }
-    } else if (section == null) {
-      // If null, remove any sections at the provided altitude.
-      sections.removeIf(existingSection -> existingSection.getAltitude() == altitude);
-      updateSectionBounds();
+    }
+
+    // Merge the section's palette into the chunk's.
+    BitCompactIntArray storage = BitCompactIntArray.fromIntArray(section.getStorage());
+    palette.addAll(section.getPalette()).upgrade(storage);
+
+    // Insert the section into the chunk.
+    sections.add(new OozeChunkSection(altitude, palette, storage));
+
+    // Update the lowest & highest known altitudes accordingly.
+    if (altitude < lowestSectionAltitude) {
+      lowestSectionAltitude = altitude;
+    } else if (altitude > highestSectionAltitude) {
+      highestSectionAltitude = altitude;
     }
   }
 
@@ -148,7 +156,7 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
   @Override
   public BlockState getBlockAt(int x, int y, int z) {
     if (!isInBounds(x, y, z)) {
-      throw new IllegalArgumentException("Chunk coordinates out of bound: (" +
+      throw new IllegalArgumentException("Chunk coordinates out of bounds: (" +
                                          x + ", " + y + ", " + z + ")");
     }
 
@@ -206,21 +214,6 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
       for (BitCompactIntArray storage : sectionsToWrite) {
         out.write(storage);
       }
-    }
-  }
-
-  /**
-   * Reevaluates {@link #lowestSectionAltitude} and {@link #highestSectionAltitude} according to
-   * which sections in the chunk currently have the highest and lowest altitudes.
-   */
-  private void updateSectionBounds() {
-    lowestSectionAltitude = Integer.MAX_VALUE;
-    highestSectionAltitude = Integer.MIN_VALUE;
-
-    for (OozeChunkSection section : sections) {
-      int altitude = section.getAltitude();
-      lowestSectionAltitude = Math.min(altitude, lowestSectionAltitude);
-      highestSectionAltitude = Math.max(altitude, highestSectionAltitude);
     }
   }
 }
