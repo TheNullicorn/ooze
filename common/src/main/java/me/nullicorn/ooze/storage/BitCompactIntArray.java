@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import me.nullicorn.ooze.BitUtils;
+import me.nullicorn.ooze.serialize.OozeDataInputStream;
 import me.nullicorn.ooze.serialize.OozeDataOutputStream;
 import me.nullicorn.ooze.serialize.OozeSerializable;
 
@@ -30,6 +31,28 @@ public class BitCompactIntArray implements IntArray, OozeSerializable {
     BitCompactIntArray newArr = new BitCompactIntArray(source.size(), source.maxValue());
     source.forEach(newArr::set);
     return newArr;
+  }
+
+  public static BitCompactIntArray deserialize(OozeDataInputStream in, int size)
+      throws IOException {
+    if (size < 0) {
+      throw new NegativeArraySizeException("Illegal size for compact array: " + size);
+    } else if (in == null) {
+      throw new IllegalArgumentException("Cannot deserialize array from null stream");
+    }
+
+    int maxValue = in.readVarInt();
+    if (maxValue < 0) {
+      throw new IOException("Illegal maximum value for array: " + maxValue);
+    }
+
+    int bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
+    int cellMask = BitUtils.createBitMask(bitsPerCell);
+    byte[] data = (maxValue != 0)
+        ? in.readBytes(BitUtils.bitsToBytes(size * bitsPerCell))
+        : new byte[0];
+
+    return new BitCompactIntArray(data, size, maxValue, bitsPerCell, cellMask);
   }
 
   /**
@@ -112,6 +135,12 @@ public class BitCompactIntArray implements IntArray, OozeSerializable {
   private int cellMask;
 
   public BitCompactIntArray(int size, int maxValue) {
+    if (size < 0) {
+      throw new NegativeArraySizeException("Illegal size for array: " + size);
+    } else if (maxValue < 0) {
+      throw new IllegalArgumentException("Illegal maximum value for array: " + maxValue);
+    }
+
     this.size = size;
     this.maxValue = maxValue;
     this.bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
@@ -127,12 +156,21 @@ public class BitCompactIntArray implements IntArray, OozeSerializable {
    * Copies the contents, size, etc, of an {@code other} array into a new one, such that modifying
    * one array will not affect the contents of the other.
    */
+  @SuppressWarnings("CopyConstructorMissesField")
   public BitCompactIntArray(BitCompactIntArray other) {
-    this.data = Arrays.copyOf(other.data, other.data.length);
-    this.size = other.size;
-    this.maxValue = other.maxValue;
-    this.bitsPerCell = other.bitsPerCell;
-    this.cellMask = other.cellMask;
+    this(Arrays.copyOf(other.data, other.data.length),
+        other.size,
+        other.maxValue,
+        other.bitsPerCell,
+        other.cellMask);
+  }
+
+  private BitCompactIntArray(byte[] data, int size, int maxValue, int bitsPerCell, int cellMask) {
+    this.data = data;
+    this.size = size;
+    this.maxValue = maxValue;
+    this.bitsPerCell = bitsPerCell;
+    this.cellMask = cellMask;
   }
 
   @Override
@@ -209,11 +247,12 @@ public class BitCompactIntArray implements IntArray, OozeSerializable {
 
   @Override
   public void serialize(OozeDataOutputStream out) throws IOException {
-    if (BitUtils.bitsNeededToStore(maxValue) < bitsPerCell) {
+    if (BitUtils.bitsNeededToStore(maxValue) != bitsPerCell) {
       // Ensure serialized form is as compact as possible.
       resize(maxValue);
     }
 
+    out.writeVarInt(maxValue);
     out.write(data);
   }
 

@@ -3,6 +3,7 @@ package me.nullicorn.ooze;
 import java.util.Objects;
 import java.util.regex.Pattern;
 import lombok.Getter;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A path identified by its namespace. Used by Minecraft for block and item IDs among other things.
@@ -24,11 +25,15 @@ public class ResourceLocation {
    *   <li>If <code>value</code> is missing a namespace (e.g. "stone"), then the default namespace "minecraft" is used.</li>
    * </ul>
    *
-   * @return The parsed resource location.
-   * @throws IllegalArgumentException If the <code>value</code> could not be parsed as a resource
-   *                                  location.
+   * @return The parsed resource location, or {@code null} if the input {@code value} cannot be
+   * parsed as a resource location.
    */
-  public static ResourceLocation fromString(String value) {
+  @Nullable
+  public static ResourceLocation fromString(@Nullable String value) {
+    if (value == null) {
+      return null;
+    }
+
     String namespace;
     String path;
 
@@ -45,7 +50,7 @@ public class ResourceLocation {
         break;
 
       default:
-        throw new IllegalArgumentException("Not a valid resource location: \"" + value + "\"");
+        return null;
     }
 
     return new ResourceLocation(namespace.intern(), path.intern());

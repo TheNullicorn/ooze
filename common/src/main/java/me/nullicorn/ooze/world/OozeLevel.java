@@ -1,8 +1,5 @@
 package me.nullicorn.ooze.world;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.BitSet;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,9 +7,8 @@ import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.nedit.type.TagType;
-import me.nullicorn.ooze.storage.BlockVolume;
 import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.serialize.OozeDataOutputStream;
+import me.nullicorn.ooze.storage.BlockVolume;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -214,50 +210,6 @@ public class OozeLevel implements BoundedLevel {
     }
 
     chunks.put(chunk.getLocation(), chunk);
-  }
-
-  @Override
-  public void serialize(OozeDataOutputStream out) throws IOException {
-    int width = getWidth();
-    int depth = getDepth();
-
-    out.writeHeader();
-
-    // Write world size & location.
-    out.writeShort(getLowestChunkX()); // Use the getters for both of these since they check if the
-    out.writeShort(getLowestChunkZ()); // level is empty for us.
-    out.writeShort(width);
-    out.writeShort(depth);
-
-    // Generate the chunk mask.
-    Chunk[] chunksToWrite = new Chunk[width * depth];
-    BitSet chunkMask = new BitSet(chunksToWrite.length);
-    chunks.values().forEach(chunk -> {
-      if (!chunk.isEmpty()) {
-        int chunkX = chunk.getLocation().getX();
-        int chunkZ = chunk.getLocation().getZ();
-
-        int chunkIndex = ((chunkX - lowChunkX) * getDepth()) + (chunkZ - lowChunkZ);
-        chunkMask.set(chunkIndex, true);
-        chunksToWrite[chunkIndex] = chunk;
-      }
-    });
-    out.writeBitSet(chunkMask, (int) Math.ceil(width * depth / (double) Byte.SIZE));
-
-    // Compress & write chunk data in order.
-    ByteArrayOutputStream chunkBytesOut = new ByteArrayOutputStream();
-    OozeDataOutputStream chunkDataOut = new OozeDataOutputStream(chunkBytesOut);
-    for (Chunk chunk : chunksToWrite) {
-      if (chunk != null) {
-        chunk.serialize(chunkDataOut);
-      }
-    }
-    out.writeCompressed(chunkBytesOut.toByteArray());
-
-    // Write NBT extras (entities, block entities, and custom data).
-    out.writeOptionalNBT(!blockEntities.isEmpty(), "BlockEntities", blockEntities);
-    out.writeOptionalNBT(!entities.isEmpty(), "Entities", entities);
-    out.writeOptionalNBT(!customStorage.isEmpty(), "Custom", customStorage);
   }
 
   /**

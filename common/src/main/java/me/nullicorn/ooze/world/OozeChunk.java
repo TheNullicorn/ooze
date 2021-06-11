@@ -1,11 +1,8 @@
 package me.nullicorn.ooze.world;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import lombok.Getter;
@@ -43,6 +40,7 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
   @Getter
   private final int dataVersion;
 
+  @Getter
   private final BlockPalette palette;
 
   // Individual sections in this set may be null if they are empty, though empty sections can also
@@ -104,9 +102,13 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
       }
     }
 
-    // Merge the section's palette into the chunk's.
     BitCompactIntArray storage = BitCompactIntArray.fromIntArray(section.getStorage());
-    palette.addAll(section.getPalette()).upgrade(storage);
+
+    // Merge the section's palette into the chunk's.
+    // If the section is already using the chunk's palette, this is not necessary.
+    if (section.getPalette() != palette) {
+      palette.addAll(section.getPalette()).upgrade(storage);
+    }
 
     // Insert the section into the chunk.
     sections.add(new OozeChunkSection(altitude, palette, storage));
@@ -114,7 +116,8 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
     // Update the lowest & highest known altitudes accordingly.
     if (altitude < lowestSectionAltitude) {
       lowestSectionAltitude = altitude;
-    } else if (altitude > highestSectionAltitude) {
+    }
+    if (altitude > highestSectionAltitude) {
       highestSectionAltitude = altitude;
     }
   }
@@ -128,7 +131,7 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
   public int getHeight() {
     return sections.isEmpty()
         ? 0
-        : SECTION_HEIGHT * (highestSectionAltitude - lowestSectionAltitude);
+        : SECTION_HEIGHT * (highestSectionAltitude - lowestSectionAltitude + 1);
   }
 
   @Override
@@ -170,7 +173,7 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
   @Override
   public boolean isEmpty() {
     for (OozeChunkSection section : sections) {
-      if (!section.isEmpty()) {
+      if (section.isNotEmpty()) {
         // If any section has non-air blocks, the chunk isn't empty either.
         return false;
       }
@@ -186,34 +189,8 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
 
   @Override
   public void serialize(OozeDataOutputStream out) throws IOException {
-    out.writeVarInt(dataVersion);
-
-    // TODO: 6/9/21 Add biome support.
-
-    if (sections.isEmpty()) {
-      out.writeVarInt(0);
-      out.writeVarInt(0);
-    }
-
-    // Determine which sections are empty.
-    BitSet nonEmptySections = new BitSet(highestSectionAltitude - lowestSectionAltitude);
-    List<BitCompactIntArray> sectionsToWrite = new ArrayList<>();
-    for (OozeChunkSection section : sections) {
-      if (!section.isEmpty()) {
-        nonEmptySections.set(section.getAltitude() - lowestSectionAltitude);
-        sectionsToWrite.add(section.getStorage());
-      }
-    }
-    out.writeVarInt(highestSectionAltitude - lowestSectionAltitude);
-    out.writeVarInt(lowestSectionAltitude);
-    out.writeBitSet(nonEmptySections, 2);
-
-    // Only write palette & blocks if there is at least 1 non-empty section.
-    if (!nonEmptySections.isEmpty()) {
-      out.writePalette(palette);
-      for (BitCompactIntArray storage : sectionsToWrite) {
-        out.write(storage);
-      }
-    }
+    // This won't cause recursion because writeChunk(...) handles OozeChunks differently. However...
+    // TODO: 6/10/21 Serialization could be designed a lot better; this ^ seems dumb.
+    out.writeChunk(this);
   }
 }

@@ -52,7 +52,7 @@ public class BlockState {
    * @return Whether or not this state represents any type of air.
    */
   public boolean isAir() {
-    if (!name.getPath().equals("minecraft")) {
+    if (!name.getNamespace().equals("minecraft")) {
       return false;
     }
 

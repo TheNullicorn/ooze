@@ -4,7 +4,6 @@ import java.util.Collection;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.serialize.OozeSerializable;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -12,7 +11,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author Nullicorn
  */
-public interface BoundedLevel extends OozeSerializable {
+public interface BoundedLevel {
 
   /**
    * @return The lowest X coordinate of any chunk in the level.

@@ -8,14 +8,24 @@ import java.io.InputStream;
 import java.util.BitSet;
 import me.nullicorn.nedit.NBTReader;
 import me.nullicorn.nedit.type.NBTCompound;
+import me.nullicorn.nedit.type.NBTList;
+import me.nullicorn.ooze.Location2D;
 import me.nullicorn.ooze.ResourceLocation;
+import me.nullicorn.ooze.storage.BitCompactIntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
+import me.nullicorn.ooze.storage.IntArray;
 import me.nullicorn.ooze.world.BlockState;
+import me.nullicorn.ooze.world.BoundedLevel;
+import me.nullicorn.ooze.world.Chunk;
+import me.nullicorn.ooze.world.OozeChunk;
+import me.nullicorn.ooze.world.OozeChunkSection;
+import me.nullicorn.ooze.world.OozeLevel;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * @author Nullicorn
  */
+// TODO: 6/9/21 Add biome support.
 public class OozeDataInputStream extends DataInputStream {
 
   private int formatVersion = -1;
@@ -112,16 +122,14 @@ public class OozeDataInputStream extends DataInputStream {
     BlockPalette palette = null;
     for (int i = 0; i < entryCount; i++) {
       int length = read();
-      boolean hasProperties = ((length & 1) == 0);
+      boolean hasProperties = ((length & 1) != 0);
       length >>>= 1;
 
       // Read the name of the block.
       String fullName = new String(readBytes(length));
-      ResourceLocation name;
-      try {
-        name = ResourceLocation.fromString(fullName);
-      } catch (IllegalArgumentException e) {
-        throw new IOException("Invalid state name in block palette: " + fullName, e);
+      ResourceLocation name = ResourceLocation.fromString(fullName);
+      if (name == null) {
+        throw new IOException("Invalid state name in block palette: " + fullName);
       }
 
       // Read the block's properties (if it has any).
@@ -151,7 +159,7 @@ public class OozeDataInputStream extends DataInputStream {
   public byte[] readBytes(int length) throws IOException {
     byte[] bytes = new byte[length];
     if (read(bytes) < bytes.length) {
-      throw new IOException("BitSet ended unexpectedly");
+      throw new IOException("Byte array ended unexpectedly");
     }
     return bytes;
   }
@@ -164,11 +172,12 @@ public class OozeDataInputStream extends DataInputStream {
    * @throws IOException If the stream cannt be read, or if the NBT data could not be deserialized.
    */
   @Nullable
-  public NBTCompound readOptionalNBT() throws IOException {
+  public Object readOptionalNBT(String key) throws IOException {
     boolean hasData = readBoolean();
 
     if (hasData) {
-      return NBTReader.read(new ByteArrayInputStream(readCompressed()), true, true);
+      NBTCompound root = NBTReader.read(new ByteArrayInputStream(readCompressed()), true, true);
+      return root.get(key);
     }
     return null;
   }
@@ -184,5 +193,96 @@ public class OozeDataInputStream extends DataInputStream {
     int compressedLength = readVarInt();
     int uncompressedLength = readVarInt();
     return Zstd.decompress(readBytes(compressedLength), uncompressedLength);
+  }
+
+  /**
+   * Reads however many bytes are needed to read a full level from the stream. The encoding used is
+   * described in {@link OozeDataOutputStream#writeLevel(BoundedLevel)}.
+   *
+   * @throws IOException If the stream could not be read.
+   * @see OozeDataOutputStream#writeChunk(Chunk)
+   */
+  public BoundedLevel readLevel() throws IOException {
+    if (!checkHeader()) {
+      throw new IOException("Invalid data header");
+    }
+
+    OozeLevel level = new OozeLevel();
+
+    int width = readUnsignedByte();
+    int depth = readUnsignedByte();
+    int lowChunkX = readShort();
+    int lowChunkZ = readShort();
+
+    BitSet chunkMask = readBitSet(width * depth);
+
+    byte[] chunkBytes = readCompressed();
+    OozeDataInputStream chunksIn = new OozeDataInputStream(new ByteArrayInputStream(chunkBytes));
+
+    for (int absChunkX = 0; absChunkX < width; absChunkX++) {
+      for (int absChunkZ = 0; absChunkZ < depth; absChunkZ++) {
+        // Only store chunks marked as non-empty.
+        if (chunkMask.get((absChunkX * depth) + absChunkZ)) {
+          level.storeChunk(chunksIn.readChunk(absChunkX + lowChunkX, absChunkZ + lowChunkZ));
+        }
+      }
+    }
+
+    Object blockEntities = readOptionalNBT("BlockEntities");
+    if (blockEntities instanceof NBTList) {
+      level.getBlockEntities().addAll((NBTList) blockEntities);
+    }
+
+    Object entities = readOptionalNBT("Entities");
+    if (entities instanceof NBTList) {
+      level.getEntities().addAll((NBTList) entities);
+    }
+
+    Object customStorage = readOptionalNBT("Custom");
+    if (customStorage instanceof NBTCompound) {
+      level.getCustomStorage().putAll((NBTCompound) customStorage);
+    }
+
+    return level;
+  }
+
+  /**
+   * Reads however many bytes are needed to read a full chunk of blocks from the stream. The
+   * encoding used is described in {@link OozeDataOutputStream#writeChunk(Chunk)}.
+   *
+   * @throws IOException If the stream could not be read.
+   * @see OozeDataOutputStream#writeChunk(Chunk)
+   */
+  public Chunk readChunk(int chunkX, int chunkZ) throws IOException {
+    int dataVersion = readVarInt();
+    int chunkHeight = readVarInt();
+    int minSectionAltitude = readVarInt();
+    BitSet nonEmptySections = readBitSet(chunkHeight);
+
+    OozeChunk chunk = new OozeChunk(new Location2D(chunkX, chunkZ), dataVersion);
+    if (nonEmptySections.isEmpty()) {
+      // The chunk is entirely air; return the empty chunk immediately.
+      return chunk;
+    }
+
+    // Create the chunk and its palette.
+    BlockPalette chunkPalette = chunk.getPalette();
+    chunkPalette.addAll(readPalette());
+
+    // Read the chunk's sections.
+    for (int absAltitude = 0; absAltitude < chunkHeight; absAltitude++) {
+
+      // Only store the section if it isn't empty.
+      if (nonEmptySections.get(absAltitude)) {
+        // Read the section's block array.
+        IntArray storage = BitCompactIntArray.deserialize(this, 4096);
+
+        // Store the section in the chunk.
+        int altitude = absAltitude + minSectionAltitude;
+        chunk.setSection(altitude, new OozeChunkSection(altitude, chunkPalette, storage));
+      }
+    }
+
+    return chunk;
   }
 }

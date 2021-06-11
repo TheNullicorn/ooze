@@ -88,22 +88,19 @@ public class OozeChunkSection implements PalettedVolume {
     return (y * height * height) + (z * getDepth()) + x;
   }
 
-  /**
-   * @return {@code true} if every block in the section {@link BlockState#isAir() is air}. Otherwise
-   * {@code false}.
-   */
-  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-  public boolean isEmpty() {
+  @Override
+  public boolean isNotEmpty() {
     if (shouldRecalculateIsEmpty) {
       for (int blockIndex = 0; blockIndex < storage.size(); blockIndex++) {
         // Check if any block is not air.
         int stateId = storage.get(blockIndex);
         if (!palette.getState(stateId).isAir()) {
           isEmpty = false;
+          shouldRecalculateIsEmpty = false;
           break;
         }
       }
     }
-    return isEmpty;
+    return !isEmpty;
   }
 }

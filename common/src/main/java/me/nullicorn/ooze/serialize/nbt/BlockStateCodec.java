@@ -37,12 +37,11 @@ public class BlockStateCodec implements Codec<BlockState, NBTCompound> {
       throw new IllegalArgumentException("Cannot decoded null block state");
     }
 
-    String name = encoded.getString(TAG_NAME, null);
-    NBTCompound properties = encoded.getCompound(TAG_PROPERTIES);
-
+    ResourceLocation name = ResourceLocation.fromString(encoded.getString(TAG_NAME, null));
     if (name == null) {
       throw new CodingException("Block state is missing a name: " + encoded);
     }
-    return new BlockState(ResourceLocation.fromString(name), properties);
+
+    return new BlockState(name, encoded.getCompound(TAG_PROPERTIES));
   }
 }

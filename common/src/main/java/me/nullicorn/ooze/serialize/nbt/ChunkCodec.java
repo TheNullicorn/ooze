@@ -1,7 +1,9 @@
 package me.nullicorn.ooze.serialize.nbt;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.IntFunction;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
@@ -18,6 +20,7 @@ import me.nullicorn.ooze.world.OozeLevel;
  *
  * @author Nullicorn
  */
+// TODO: 6/9/21 Add biome support.
 public class ChunkCodec implements Codec<OozeChunk, NBTCompound> {
 
   private static final String TAG_DATA_VERSION   = "DataVersion";
@@ -61,6 +64,8 @@ public class ChunkCodec implements Codec<OozeChunk, NBTCompound> {
   @Override
   public NBTCompound encode(OozeChunk chunk) throws CodingException {
     int dataVersion = chunk.getDataVersion();
+    Location2D chunkLoc = chunk.getLocation();
+
     NBTCompound chunkTag = new NBTCompound();
     NBTCompound rootTag = new NBTCompound();
 
@@ -68,23 +73,10 @@ public class ChunkCodec implements Codec<OozeChunk, NBTCompound> {
     rootTag.put(TAG_DATA_VERSION, chunk.getDataVersion());
     rootTag.put(TAG_CHUNK, chunkTag);
 
-    // TODO: 6/9/21 Add biome support.
-
-    // Retrieve a codec to be used on each section in the chunk.
-    Codec<OozeChunkSection, NBTCompound> sectionCodec = sectionCodecProvider.apply(dataVersion);
-
-    // Encode & compile the chunk's sections into a list.
-    NBTList sectionsTag = new NBTList(TagType.COMPOUND);
-    for (OozeChunkSection section : chunk) {
-      sectionsTag.add(sectionCodec.encode(section));
-    }
-
-    Location2D chunkLoc = chunk.getLocation();
-
     // Write the chunk's location, sections, block entities, & entities.
     chunkTag.put(TAG_CHUNK_X, chunkLoc.getX());
     chunkTag.put(TAG_CHUNK_Z, chunkLoc.getZ());
-    chunkTag.put(TAG_SECTIONS, sectionsTag);
+    chunkTag.put(TAG_SECTIONS, encodeSections(dataVersion, chunk));
     chunkTag.put(TAG_ENTITIES, level.getEntities(chunkLoc));
     chunkTag.put(TAG_BLOCK_ENTITIES, level.getBlockEntities(chunkLoc));
 
@@ -102,35 +94,23 @@ public class ChunkCodec implements Codec<OozeChunk, NBTCompound> {
     NBTCompound encoded = root.getCompound(TAG_CHUNK);
 
     if (encoded == null) {
-      throw new CodingException("Cannot decode chunk with no data");
+      throw new CodingException("Encoded chunk has no data");
     }
 
-    // Read the chunk's position (x & z).
+    // Read the chunk's position & block sections.
     Number chunkX = encoded.getNumber(TAG_CHUNK_X, null);
     Number chunkZ = encoded.getNumber(TAG_CHUNK_Z, null);
+    Set<OozeChunkSection> sections = decodeSections(dataVersion, encoded.getList(TAG_SECTIONS));
+
     if (chunkX == null || chunkZ == null) {
-      throw new CodingException("Cannot decode chunk without position");
+      throw new CodingException("Encoded chunk has no position information");
     }
-
-    // TODO: 6/9/21 Add biome support.
-
     Location2D chunkLoc = new Location2D(chunkX.intValue(), chunkZ.intValue());
+
+    // Initialize the chunk with its decoded sections.
     OozeChunk chunk = new OozeChunk(chunkLoc, dataVersion);
-
-    // Decode the chunk's sections.
-    NBTList sectionsTag = encoded.getList(TAG_SECTIONS);
-    if (sectionsTag != null) {
-      // Ensure sections tag is a list of compounds.
-      if (sectionsTag.getContentType() != TagType.COMPOUND) {
-        throw new CodingException("Cannot decode sections from " + sectionsTag.getContentType());
-      }
-
-      // Retrieve a codec to be used on each section in the chunk.
-      Codec<OozeChunkSection, NBTCompound> sectionCodec = sectionCodecProvider.apply(dataVersion);
-      for (Object entry : sectionsTag) {
-        OozeChunkSection section = sectionCodec.decode((NBTCompound) entry);
-        chunk.setSection(section.getAltitude(), section);
-      }
+    for (OozeChunkSection section : sections) {
+      chunk.setSection(section.getAltitude(), section);
     }
 
     // Replace any existing entities & block entities stored in the level for the chunk.
@@ -138,6 +118,51 @@ public class ChunkCodec implements Codec<OozeChunk, NBTCompound> {
     level.setBlockEntities(chunkLoc, encoded.getList(TAG_BLOCK_ENTITIES));
 
     return chunk;
+  }
+
+  /**
+   * Encodes all of the {@code chunk}'s sections into a single list.
+   *
+   * @param dataVersion The data version that the returned list should be compatible with.
+   */
+  private NBTList encodeSections(int dataVersion, OozeChunk chunk) throws CodingException {
+    // Retrieve a codec to be used on each section in the chunk.
+    Codec<OozeChunkSection, NBTCompound> sectionCodec = sectionCodecProvider.apply(dataVersion);
+
+    // Encode & compile the chunk's sections into one list.
+    NBTList encoded = new NBTList(TagType.COMPOUND);
+    for (OozeChunkSection section : chunk) {
+      encoded.add(sectionCodec.encode(section));
+    }
+
+    return encoded;
+  }
+
+  /**
+   * Opposite of {@link #encodeSections(int, OozeChunk)}.
+   */
+  private Set<OozeChunkSection> decodeSections(int dataVersion, NBTList encoded)
+      throws CodingException {
+    Set<OozeChunkSection> sections = new HashSet<>();
+
+    if (encoded == null) {
+      // Nothing to decode.
+      return sections;
+    } else if (encoded.getContentType() != TagType.COMPOUND) {
+      // Sections must be a list of compounds.
+      throw new CodingException("Cannot decode sections from " + encoded.getContentType());
+    }
+
+    // Retrieve a codec to be used on each section in the chunk.
+    Codec<OozeChunkSection, NBTCompound> sectionCodec = sectionCodecProvider.apply(dataVersion);
+    for (Object entry : encoded) {
+      OozeChunkSection section = sectionCodec.decode((NBTCompound) entry);
+      if (section.getPalette().size() > 1 || !section.getPalette().getState(0).isAir()) {
+        sections.add(section);
+      }
+    }
+
+    return sections;
   }
 
   /**
