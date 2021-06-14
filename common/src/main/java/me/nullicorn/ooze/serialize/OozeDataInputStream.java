@@ -1,6 +1,7 @@
 package me.nullicorn.ooze.serialize;
 
 import com.github.luben.zstd.Zstd;
+import com.github.luben.zstd.ZstdException;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -30,8 +31,9 @@ public class OozeDataInputStream extends DataInputStream {
 
   private int formatVersion = -1;
 
-  private boolean     isDecompressing = false;
-  private InputStream actualIn;
+  // Equivalent of `isCompressing` and `tempOut` in OozeDataOutputStream.
+  private boolean isDecompressing = false;
+  private InputStream tempIn;
 
   public OozeDataInputStream(InputStream in) {
     super(in);
@@ -163,6 +165,17 @@ public class OozeDataInputStream extends DataInputStream {
     return bytes;
   }
 
+  /**
+   * Tells the stream to decompress any bytes read after calling this method and before the next
+   * call to {@link #endDecompression()}.
+   * <p><br>
+   * Counterpart to {@link OozeDataOutputStream#beginCompression() beginCompression()}.
+   *
+   * @throws IOException           If the data could not be decompressed, or if it could not be read
+   *                               from the stream to begin with.
+   * @throws IllegalStateException If consecutive calls to this method are made without
+   *                               corresponding calls to {@link #endDecompression()}.
+   */
   public void beginDecompression() throws IOException {
     if (isDecompressing) {
       throw new IllegalStateException("Already decompressing");
@@ -173,23 +186,46 @@ public class OozeDataInputStream extends DataInputStream {
 
     byte[] compressed = new byte[compressedLength];
     readFully(compressed);
-    byte[] decompressed = Zstd.decompress(compressed, uncompressedLength);
+    byte[] decompressed;
+    try {
+      decompressed = Zstd.decompress(compressed, uncompressedLength);
+    } catch (ZstdException e) {
+      throw new IOException("Failed to decompress buffer", e);
+    }
 
     isDecompressing = true;
-    actualIn = in;
+    tempIn = in;
     in = new ByteArrayInputStream(decompressed);
   }
 
-  public void endDecompression() {
+  /**
+   * Tells the stream to stop reading whatever compressed section was started by the last call to
+   * {@link #beginDecompression()}, and to return to reading from the uncompressed source stream.
+   *
+   * @throws IllegalStateException If a corresponding call to {@link #beginDecompression()} has not
+   *                               been made.
+   */
+  // Suppressed because IOException is included for consistency, as well as to future-proof the API.
+  @SuppressWarnings({"RedundantThrows", "java:S1130"})
+  public void endDecompression() throws IOException {
     if (!isDecompressing) {
       throw new IllegalStateException("Attempted to end decompression without beginning");
     }
 
     isDecompressing = false;
-    in = actualIn;
-    actualIn = null;
+    in = tempIn;
+    tempIn = null;
   }
 
+  /**
+   * Reads a list of NBT compounds from the stream, using the encoding documented by {@link
+   * OozeDataOutputStream#writeList(NBTList)}.
+   *
+   * @return The list of NBT compounds that was read from the stream. May be empty, but never null.
+   * @throws IOException If the read list has a negative size, if the list's elements could not be
+   *                     decompressed, or if any part of the list could not be read from the
+   *                     underlying stream.
+   */
   public NBTList readList() throws IOException {
     // Read & validate the list's size.
     int size = readVarInt();

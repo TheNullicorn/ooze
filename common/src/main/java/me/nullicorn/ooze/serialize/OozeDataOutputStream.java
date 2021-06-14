@@ -32,16 +32,42 @@ public class OozeDataOutputStream extends DataOutputStream {
   static final int MAGIC_NUMBER   = 0x610BB10B;
   static final int FORMAT_VERSION = 0;
 
-  private final int          compressionLevel;
-  private       boolean      isCompressing = false;
-  private       OutputStream actualOut;
+  private final int compressionLevel;
 
+  // Used by `beginCompression()` and `endCompression()` to ensure that compression is done in the
+  // correct order by users.
+  private boolean isCompressing = false;
+
+  // When compression, the stream's destination (`out`) is replaced with a temporary buffer
+  // (ByteArrayOutputStream) that holds the compressed data. When that happens, the stream's actual
+  // destination is kept here so that it can be put back into `out` when compression is over. If
+  // compression is not in progress, then this is set to `null`.
+  private OutputStream tempOut;
+
+  /**
+   * Same as {@link OozeDataOutputStream#OozeDataOutputStream(OutputStream, int)}, but {@code
+   * compressionLevel} defaults to {@code 3}.
+   */
   public OozeDataOutputStream(OutputStream out) {
     this(out, 3);
   }
 
+  /**
+   * @param compressionLevel The level of Zstandard compression to be used by {@link
+   *                         #beginCompression()} and {@link #endCompression()}, as well as any
+   *                         writer methods that depend on compression.
+   */
   public OozeDataOutputStream(OutputStream out, int compressionLevel) {
     super(out);
+
+    // Check that compression level is in bounds.
+    int minLevel = Zstd.minCompressionLevel();
+    int maxLevel = Zstd.maxCompressionLevel();
+    if (compressionLevel < minLevel || compressionLevel > maxLevel) {
+      throw new IllegalArgumentException("Compression level (" + compressionLevel +
+                                         ") must be between " + minLevel + " and " + maxLevel);
+    }
+
     this.compressionLevel = compressionLevel;
   }
 
@@ -188,7 +214,7 @@ public class OozeDataOutputStream extends DataOutputStream {
    *                               {@link #endCompression()}.
    * @see #endCompression()
    */
-  // Suppressed because IOException is thrown for consistency, as well as to future-proof the API.
+  // Suppressed because IOException is included for consistency, as well as to future-proof the API.
   @SuppressWarnings({"RedundantThrows", "java:S1130"})
   public void beginCompression() throws IOException {
     if (isCompressing) {
@@ -196,7 +222,7 @@ public class OozeDataOutputStream extends DataOutputStream {
     }
 
     isCompressing = true;
-    actualOut = out;
+    tempOut = out;
     out = new ByteArrayOutputStream();
   }
 
@@ -222,8 +248,8 @@ public class OozeDataOutputStream extends DataOutputStream {
     }
 
     isCompressing = false;
-    out = actualOut;
-    actualOut = null;
+    out = tempOut;
+    tempOut = null;
 
     writeVarInt(uncompressed.length);
     writeVarInt(compressed.length);
