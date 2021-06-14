@@ -40,13 +40,8 @@ public class OozeDataInputStream extends DataInputStream {
   /**
    * @return The Ooze format version used by the data in the stream, or {@code -1} if a valid header
    * has not been read.
-   * @throws IllegalStateException If {@link #checkHeader()} has not returned true yet.
-   * @see #checkHeader()
    */
   public int getFormatVersion() {
-    if (formatVersion == -1) {
-      throw new IllegalStateException("Format version has not been read");
-    }
     return formatVersion;
   }
 
