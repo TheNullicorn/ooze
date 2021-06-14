@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.convert.region.file;
+package me.nullicorn.ooze.convert.region;
 
 import me.nullicorn.ooze.Location2D;
 

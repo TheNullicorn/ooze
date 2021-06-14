@@ -49,7 +49,7 @@ public class WordedIntArray implements IntArray {
     } else {
       WordedIntArray array = new WordedIntArray(size, maxValue);
 
-      // Extract values from compact format.
+      // Extract values from legacy format (vales could span across multiple longs).
       int bitsPerCell = BitUtils.bitsNeededToStore(maxValue);
       int cellMask = BitUtils.createBitMask(bitsPerCell);
       for (int cellIndex = 0; cellIndex < size; cellIndex++) {

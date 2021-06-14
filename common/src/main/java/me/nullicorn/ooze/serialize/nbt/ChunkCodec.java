@@ -145,7 +145,7 @@ public class ChunkCodec implements Codec<OozeChunk, NBTCompound> {
       throws CodingException {
     Set<OozeChunkSection> sections = new HashSet<>();
 
-    if (encoded == null) {
+    if (encoded == null || encoded.isEmpty()) {
       // Nothing to decode.
       return sections;
     } else if (encoded.getContentType() != TagType.COMPOUND) {

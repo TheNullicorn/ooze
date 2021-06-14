@@ -3,7 +3,9 @@ package me.nullicorn.ooze.world;
 import java.util.Collection;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
+import me.nullicorn.nedit.type.TagType;
 import me.nullicorn.ooze.Location2D;
+import me.nullicorn.ooze.storage.BlockVolume;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -11,17 +13,12 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author Nullicorn
  */
-public interface BoundedLevel {
+public interface BoundedLevel<C extends Chunk> extends BlockVolume {
 
   /**
-   * @return The lowest X coordinate of any chunk in the level.
+   * @return The lowest X and Z coordinates of any chunk in the level.
    */
-  int getLowestChunkX();
-
-  /**
-   * @return The lowest Z coordinate of any chunk in the level.
-   */
-  int getLowestChunkZ();
+  Location2D getLowestChunkPos();
 
   /**
    * @return The size of the level along the X axis (in chunks).
@@ -40,7 +37,7 @@ public interface BoundedLevel {
    * @see #getChunkAt(int, int)
    */
   @Nullable
-  default Chunk getChunkAt(Location2D chunkLocation) {
+  default C getChunkAt(Location2D chunkLocation) {
     return getChunkAt(chunkLocation.getX(), chunkLocation.getZ());
   }
 
@@ -50,12 +47,24 @@ public interface BoundedLevel {
    * @return The data for the chunk at the provided coordinates, or null if that chunk has no data.
    */
   @Nullable
-  Chunk getChunkAt(int chunkX, int chunkZ);
+  C getChunkAt(int chunkX, int chunkZ);
+
+  /**
+   * Set the data for a chunk in the level, overwriting any existing data for that chunk.
+   *
+   * @throws IllegalArgumentException If the chunk cannot be stored within the bounds of the level.
+   */
+  void storeChunk(C chunk);
 
   /**
    * @return All chunks in the level that have data associated with them.
    */
-  Collection<Chunk> getStoredChunks();
+  Collection<C> getStoredChunks();
+
+  /**
+   * @return An object for storing persistent, custom data associated with the level.
+   */
+  NBTCompound getCustomStorage();
 
   /**
    * @return All entities that exist in the world represented by this level. Though atypical, it is
@@ -79,14 +88,37 @@ public interface BoundedLevel {
   NBTList getEntities(int chunkX, int chunkZ);
 
   /**
+   * Same as {@link #setEntities(int, int, NBTList)}, but {@code chunkX} and {@code chunkZ} are
+   * provided via a {@link Location2D}.
+   *
+   * @see #setEntities(int, int, NBTList)
+   */
+  default void setEntities(Location2D chunkLoc, NBTList replacement) {
+    setEntities(chunkLoc.getX(), chunkLoc.getZ(), replacement);
+  }
+
+  /**
+   * Replaces all entities previously stored in the chunk at {@code (chunkX, chunkZ)} with the
+   * entities in the {@code replacement} list. If the {@code replacement} list is empty, then any
+   * existing entities in that chunk are cleared, and none are added.
+   *
+   * @param replacement Any entities that should be stored in the chunk. Must be a list of compound
+   *                    tags, unless the list is empty (in which case it can be anything).
+   * @throws IllegalArgumentException If the {@code replacement} list has entries but its {@link
+   *                                  NBTList#getContentType() contentType} is not {@link
+   *                                  TagType#COMPOUND COMPOUND}.
+   */
+  void setEntities(int chunkX, int chunkZ, NBTList replacement);
+
+  /**
    * @return All entities that exist in the world represented by this level. Though atypical, it is
    * possible for blocks in this list to exist outside the level's bounds.
    */
   NBTList getBlockEntities();
 
   /**
-   * Same as {@link #getBlockEntities(int, int)}, but {@code chunkX} and {@code chunkZ} are
-   * provided via a {@link Location2D}.
+   * Same as {@link #getBlockEntities(int, int)}, but {@code chunkX} and {@code chunkZ} are provided
+   * via a {@link Location2D}.
    *
    * @see #getBlockEntities(int, int)
    */
@@ -101,14 +133,25 @@ public interface BoundedLevel {
   NBTList getBlockEntities(int chunkX, int chunkZ);
 
   /**
-   * @return An object for storing persistent, custom data associated with the level.
+   * Same as {@link #setBlockEntities(int, int, NBTList)}, but {@code chunkX} and {@code chunkZ} are
+   * provided via a {@link Location2D}.
+   *
+   * @see #setBlockEntities(int, int, NBTList)
    */
-  NBTCompound getCustomStorage();
+  default void setBlockEntities(Location2D chunkLoc, NBTList replacement) {
+    setBlockEntities(chunkLoc.getX(), chunkLoc.getZ(), replacement);
+  }
 
   /**
-   * Set the data for a chunk in the level, overwriting any existing data for that chunk.
+   * Replaces all block entities previously stored in the chunk at {@code (chunkX, chunkZ)} with the
+   * block entities in the {@code replacement} list. If the {@code replacement} list is empty, then
+   * any existing block entities in that chunk are cleared, and none are added.
    *
-   * @throws IllegalArgumentException If the chunk cannot be stored within the bounds of the level.
+   * @param replacement Any block entities that should be stored in the chunk. Must be a list of
+   *                    compound tags, unless the list is empty (in which case it can be anything).
+   * @throws IllegalArgumentException If the {@code replacement} list has entries but its {@link
+   *                                  NBTList#getContentType() contentType} is not {@link
+   *                                  TagType#COMPOUND COMPOUND}.
    */
-  void storeChunk(Chunk chunk);
+  void setBlockEntities(int chunkX, int chunkZ, NBTList replacement);
 }

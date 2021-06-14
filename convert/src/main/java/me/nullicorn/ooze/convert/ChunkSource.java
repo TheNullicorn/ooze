@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.convert.region.file;
+package me.nullicorn.ooze.convert;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -7,7 +7,7 @@ import me.nullicorn.ooze.Location2D;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Something that chunks can be loaded from.
+ * Something that chunks can be retrieved from.
  *
  * @author Nullicorn
  */
@@ -27,8 +27,8 @@ public interface ChunkSource extends Closeable {
   /**
    * Loads the NBT data for a chunk at a given pair of coordinates.
    *
-   * @param chunkX The x-coordinate of the chunk.
-   * @param chunkZ The z-coordinate of the chunk.
+   * @param chunkX The X coordinate of the chunk.
+   * @param chunkZ The Z coordinate of the chunk.
    * @return The serialized chunk data, or null if none exists for that chunk.
    * @throws IOException If the chunk could not be accessed or read from its source.
    */

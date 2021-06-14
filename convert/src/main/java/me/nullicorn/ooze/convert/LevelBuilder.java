@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.convert.region;
+package me.nullicorn.ooze.convert;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -6,9 +6,9 @@ import java.util.Set;
 import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.convert.region.file.ChunkSource;
 import me.nullicorn.ooze.serialize.nbt.ChunkCodec;
 import me.nullicorn.ooze.serialize.nbt.ChunkCodec.PooledSectionCodecProvider;
+import me.nullicorn.ooze.world.OozeChunk;
 import me.nullicorn.ooze.world.OozeLevel;
 
 /**
@@ -22,9 +22,8 @@ public class LevelBuilder {
   // TODO: 5/21/21 Provide access to "custom" NBT data.
 
   @Getter
-  private final ChunkSource       source;
-  private final Set<Location2D>   chunksToLoad;
-
+  protected final ChunkSource     source;
+  protected final Set<Location2D> chunksToLoad;
 
   public LevelBuilder(ChunkSource source) {
     this.source = source;
@@ -62,9 +61,9 @@ public class LevelBuilder {
   /**
    * Adds all existing chunks in a {@code width * depth} area to the world.
    *
-   * @param minChunkX The lowest possible x-coordinate of any chunk that should be added; measured
+   * @param minChunkX The lowest possible X coordinate of any chunk that should be added; measured
    *                  in chunks.
-   * @param minChunkZ The lowest possible z-coordinate of any chunk that should be added; measured
+   * @param minChunkZ The lowest possible Z coordinate of any chunk that should be added; measured
    *                  in chunks.
    */
   public LevelBuilder addChunks(int minChunkX, int minChunkZ, int width, int depth) {
@@ -93,7 +92,12 @@ public class LevelBuilder {
     for (Location2D chunkPos : chunksToLoad) {
       NBTCompound chunkData = source.loadChunk(chunkPos);
       if (chunkData != null) {
-        level.storeChunk(chunkCodec.decode(chunkData));
+        // Decode the chunk.
+        OozeChunk chunk = chunkCodec.decode(chunkData);
+        if (!chunk.isEmpty()) {
+          // Add non-empty chunks to the level.
+          level.storeChunk(chunk);
+        }
       }
     }
 

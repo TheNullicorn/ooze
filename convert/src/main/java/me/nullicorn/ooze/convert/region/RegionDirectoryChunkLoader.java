@@ -1,14 +1,15 @@
-package me.nullicorn.ooze.convert.region.file;
+package me.nullicorn.ooze.convert.region;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import me.nullicorn.nedit.NBTReader;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.ooze.Location2D;
+import me.nullicorn.ooze.convert.ChunkSource;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -18,8 +19,8 @@ import org.jetbrains.annotations.Nullable;
  */
 public class RegionDirectoryChunkLoader implements ChunkSource {
 
-  private final File                        directory;
-  private final Map<Location2D, RegionFile> loadedRegions;
+  private final File                                  directory;
+  private final ConcurrentMap<Location2D, RegionFile> loadedRegions;
 
   public RegionDirectoryChunkLoader(File regionDir) {
     if (!regionDir.isDirectory()) {
@@ -28,7 +29,7 @@ public class RegionDirectoryChunkLoader implements ChunkSource {
     }
 
     directory = regionDir;
-    loadedRegions = new HashMap<>();
+    loadedRegions = new ConcurrentHashMap<>();
   }
 
   /**
@@ -98,20 +99,25 @@ public class RegionDirectoryChunkLoader implements ChunkSource {
    */
   @Nullable
   @SuppressWarnings("java:S2095")
-  private RegionFile loadRegion(Location2D regionLocation) throws IOException {
-    File regionFile = new File(directory, LevelFileType.ANVIL.getFileName(regionLocation));
-    if (!regionFile.isFile()) {
-      // Fall-back to region file if no anvil file exists.
-      regionFile = new File(directory, LevelFileType.REGION.getFileName(regionLocation));
-      if (!regionFile.isFile()) {
-        return null;
-      }
-    }
+  public RegionFile loadRegion(Location2D regionLocation) throws IOException {
+    RegionFile region = loadedRegions.get(regionLocation);
 
-    // Load & cache the region.
-    RegionFile region = new RegionFile(regionFile);
-    region.open();
-    loadedRegions.put(regionLocation, region);
+    // Load the region if it isn't already loaded.
+    if (region == null) {
+      File regionFile = new File(directory, LevelFileType.ANVIL.getFileName(regionLocation));
+      if (!regionFile.isFile()) {
+        // Fall-back to region file if no anvil file exists.
+        regionFile = new File(directory, LevelFileType.REGION.getFileName(regionLocation));
+        if (!regionFile.isFile()) {
+          return null;
+        }
+      }
+
+      // Load & cache the region.
+      region = new RegionFile(regionFile);
+      region.open();
+      loadedRegions.put(regionLocation, region);
+    }
 
     return region;
   }
@@ -119,8 +125,8 @@ public class RegionDirectoryChunkLoader implements ChunkSource {
   /**
    * Attempts to load an oversized chunk from its separate file.
    *
-   * @param chunkX The x-coordinate of the chunk.
-   * @param chunkZ The z-coordinate of the chunk.
+   * @param chunkX The X coordinate of the chunk.
+   * @param chunkZ The Z coordinate of the chunk.
    * @return The serialized NBT data for the chunk, or null if its file could not be found.
    * @throws IOException If the chunk file could not be read.
    */

@@ -15,6 +15,7 @@ import me.nullicorn.ooze.world.OozeChunkSection;
  *
  * @author Nullicorn
  */
+// TODO: 6/9/21 Add support for legacy section encoding.
 public class ChunkSectionCodec implements Codec<OozeChunkSection, NBTCompound> {
 
   private static final BlockPaletteCodec defaultPaletteCodec = new BlockPaletteCodec();
@@ -77,7 +78,6 @@ public class ChunkSectionCodec implements Codec<OozeChunkSection, NBTCompound> {
       encoded.put(TAG_PALETTE, paletteCodec.encode(localizedPalette));
       encoded.put(TAG_BLOCK_STATES, wordedStorage.toRaw(!usePaddedBlockStates));
     } else {
-      // TODO: 6/9/21 Add support for legacy section encoding.
       throw new UnsupportedOperationException("Legacy section encoding not yet supported");
     }
 
@@ -90,7 +90,7 @@ public class ChunkSectionCodec implements Codec<OozeChunkSection, NBTCompound> {
       throw new CodingException("Chunk section has no altitude");
     }
 
-    // The section's y-value (in 16-block units).
+    // The section's Y value (in 16-block units).
     int altitude = encoded.getInt(TAG_ALTITUDE, 0);
 
     // Check if the section uses the modern format (palette & long-array storage).
@@ -109,7 +109,6 @@ public class ChunkSectionCodec implements Codec<OozeChunkSection, NBTCompound> {
           !usePaddedBlockStates);
       return new OozeChunkSection(altitude, palette, storage);
     } else {
-      // TODO: 6/9/21 Add support for legacy section encoding.
       throw new UnsupportedOperationException("Legacy section decoding not yet supported");
     }
   }

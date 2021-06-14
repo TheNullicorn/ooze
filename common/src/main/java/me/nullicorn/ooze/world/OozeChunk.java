@@ -158,7 +158,7 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
 
   @Override
   public BlockState getBlockAt(int x, int y, int z) {
-    if (!isInBounds(x, y, z)) {
+    if (x < 0 || z < 0 || x >= 16 || z >= 16) {
       throw new IllegalArgumentException("Chunk coordinates out of bounds: (" +
                                          x + ", " + y + ", " + z + ")");
     }

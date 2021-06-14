@@ -6,9 +6,11 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.BitSet;
+import me.nullicorn.nedit.NBTInputStream;
 import me.nullicorn.nedit.NBTReader;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
+import me.nullicorn.nedit.type.TagType;
 import me.nullicorn.ooze.Location2D;
 import me.nullicorn.ooze.ResourceLocation;
 import me.nullicorn.ooze.storage.BitCompactIntArray;
@@ -16,11 +18,9 @@ import me.nullicorn.ooze.storage.BlockPalette;
 import me.nullicorn.ooze.storage.IntArray;
 import me.nullicorn.ooze.world.BlockState;
 import me.nullicorn.ooze.world.BoundedLevel;
-import me.nullicorn.ooze.world.Chunk;
 import me.nullicorn.ooze.world.OozeChunk;
 import me.nullicorn.ooze.world.OozeChunkSection;
 import me.nullicorn.ooze.world.OozeLevel;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * @author Nullicorn
@@ -29,6 +29,9 @@ import org.jetbrains.annotations.Nullable;
 public class OozeDataInputStream extends DataInputStream {
 
   private int formatVersion = -1;
+
+  private boolean     isDecompressing = false;
+  private InputStream actualIn;
 
   public OozeDataInputStream(InputStream in) {
     super(in);
@@ -120,6 +123,7 @@ public class OozeDataInputStream extends DataInputStream {
     }
 
     BlockPalette palette = null;
+    NBTInputStream propertyReader = new NBTInputStream(in, true, true);
     for (int i = 0; i < entryCount; i++) {
       int length = read();
       boolean hasProperties = ((length & 1) != 0);
@@ -134,7 +138,7 @@ public class OozeDataInputStream extends DataInputStream {
 
       // Read the block's properties (if it has any).
       NBTCompound properties = hasProperties
-          ? NBTReader.read(this, true, true)
+          ? propertyReader.readCompound()
           : null;
 
       // Add the state to the palette.
@@ -164,35 +168,51 @@ public class OozeDataInputStream extends DataInputStream {
     return bytes;
   }
 
-  /**
-   * Reads the next boolean from the stream, followed by an NBT compound if the boolean is true.
-   *
-   * @return The deserialized NBT compound if one was read, or {@code null} if the initial boolean
-   * was {@code false}.
-   * @throws IOException If the stream cannt be read, or if the NBT data could not be deserialized.
-   */
-  @Nullable
-  public Object readOptionalNBT(String key) throws IOException {
-    boolean hasData = readBoolean();
-
-    if (hasData) {
-      NBTCompound root = NBTReader.read(new ByteArrayInputStream(readCompressed()), true, true);
-      return root.get(key);
+  public void beginDecompression() throws IOException {
+    if (isDecompressing) {
+      throw new IllegalStateException("Already decompressing");
     }
-    return null;
+
+    int uncompressedLength = readVarInt();
+    int compressedLength = readVarInt();
+
+    byte[] compressed = new byte[compressedLength];
+    readFully(compressed);
+    byte[] decompressed = Zstd.decompress(compressed, uncompressedLength);
+
+    isDecompressing = true;
+    actualIn = in;
+    in = new ByteArrayInputStream(decompressed);
   }
 
-  /**
-   * Reads a Zstd-compressed section of data from the stream, preceded by two {@link #readVarInt()
-   * VarInts} indicating the length of the compressed data.
-   *
-   * @return The decompressed data in the section.
-   * @throws IOException If the stream could not be read, or if the data could not be decompressed.
-   */
-  public byte[] readCompressed() throws IOException {
-    int compressedLength = readVarInt();
-    int uncompressedLength = readVarInt();
-    return Zstd.decompress(readBytes(compressedLength), uncompressedLength);
+  public void endDecompression() {
+    if (!isDecompressing) {
+      throw new IllegalStateException("Attempted to end decompression without beginning");
+    }
+
+    isDecompressing = false;
+    in = actualIn;
+    actualIn = null;
+  }
+
+  public NBTList readList() throws IOException {
+    // Read & validate the list's size.
+    int size = readVarInt();
+    if (size < 0) {
+      throw new IOException(new NegativeArraySizeException("List size is negative"));
+    }
+
+    // Read & insert each compound into the list.
+    NBTList list = new NBTList(TagType.COMPOUND);
+    if (size > 0) {
+      beginDecompression(); // List elements are all compressed together.
+      NBTInputStream elementReader = new NBTInputStream(in, true, true);
+      for (int i = 0; i < size; i++) {
+        list.add(elementReader.readCompound());
+      }
+      endDecompression();
+    }
+    return list;
   }
 
   /**
@@ -200,9 +220,9 @@ public class OozeDataInputStream extends DataInputStream {
    * described in {@link OozeDataOutputStream#writeLevel(BoundedLevel)}.
    *
    * @throws IOException If the stream could not be read.
-   * @see OozeDataOutputStream#writeChunk(Chunk)
+   * @see OozeDataOutputStream#writeChunk(OozeChunk)
    */
-  public BoundedLevel readLevel() throws IOException {
+  public BoundedLevel<OozeChunk> readLevel() throws IOException {
     if (!checkHeader()) {
       throw new IOException("Invalid data header");
     }
@@ -216,31 +236,27 @@ public class OozeDataInputStream extends DataInputStream {
 
     BitSet chunkMask = readBitSet(width * depth);
 
-    byte[] chunkBytes = readCompressed();
-    OozeDataInputStream chunksIn = new OozeDataInputStream(new ByteArrayInputStream(chunkBytes));
-
+    // Read & decompress all chunk data.
+    beginDecompression();
     for (int absChunkX = 0; absChunkX < width; absChunkX++) {
       for (int absChunkZ = 0; absChunkZ < depth; absChunkZ++) {
         // Only store chunks marked as non-empty.
         if (chunkMask.get((absChunkX * depth) + absChunkZ)) {
-          level.storeChunk(chunksIn.readChunk(absChunkX + lowChunkX, absChunkZ + lowChunkZ));
+          level.storeChunk(readChunk(absChunkX + lowChunkX, absChunkZ + lowChunkZ));
         }
       }
     }
+    endDecompression();
 
-    Object blockEntities = readOptionalNBT("BlockEntities");
-    if (blockEntities instanceof NBTList) {
-      level.getBlockEntities().addAll((NBTList) blockEntities);
-    }
+    level.getBlockEntities().addAll(readList());
+    level.getEntities().addAll(readList());
 
-    Object entities = readOptionalNBT("Entities");
-    if (entities instanceof NBTList) {
-      level.getEntities().addAll((NBTList) entities);
-    }
-
-    Object customStorage = readOptionalNBT("Custom");
-    if (customStorage instanceof NBTCompound) {
-      level.getCustomStorage().putAll((NBTCompound) customStorage);
+    boolean hasCustomStorage = readBoolean();
+    if (hasCustomStorage) {
+      // Read & decompress custom storage data.
+      beginDecompression();
+      level.getCustomStorage().putAll(NBTReader.read(in, true, true));
+      endDecompression();
     }
 
     return level;
@@ -248,12 +264,12 @@ public class OozeDataInputStream extends DataInputStream {
 
   /**
    * Reads however many bytes are needed to read a full chunk of blocks from the stream. The
-   * encoding used is described in {@link OozeDataOutputStream#writeChunk(Chunk)}.
+   * encoding used is described in {@link OozeDataOutputStream#writeChunk(OozeChunk)}.
    *
    * @throws IOException If the stream could not be read.
-   * @see OozeDataOutputStream#writeChunk(Chunk)
+   * @see OozeDataOutputStream#writeChunk(OozeChunk)
    */
-  public Chunk readChunk(int chunkX, int chunkZ) throws IOException {
+  public OozeChunk readChunk(int chunkX, int chunkZ) throws IOException {
     int dataVersion = readVarInt();
     int chunkHeight = readVarInt();
     int minSectionAltitude = readVarInt();

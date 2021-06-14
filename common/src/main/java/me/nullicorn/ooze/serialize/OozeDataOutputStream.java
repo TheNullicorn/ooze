@@ -8,9 +8,11 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+import me.nullicorn.nedit.NBTOutputStream;
 import me.nullicorn.nedit.NBTWriter;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
+import me.nullicorn.nedit.type.TagType;
 import me.nullicorn.ooze.ResourceLocation;
 import me.nullicorn.ooze.storage.BitCompactIntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
@@ -29,8 +31,17 @@ public class OozeDataOutputStream extends DataOutputStream {
   static final int MAGIC_NUMBER   = 0x610BB10B;
   static final int FORMAT_VERSION = 0;
 
+  private final int          compressionLevel;
+  private       boolean      isCompressing = false;
+  private       OutputStream actualOut;
+
   public OozeDataOutputStream(OutputStream out) {
+    this(out, 3);
+  }
+
+  public OozeDataOutputStream(OutputStream out, int compressionLevel) {
     super(out);
+    this.compressionLevel = compressionLevel;
   }
 
   /**
@@ -95,7 +106,7 @@ public class OozeDataOutputStream extends DataOutputStream {
    */
   public void writeBitSet(BitSet value, int bitCount) throws IOException {
     if (bitCount == 0) {
-      out.write(0);
+      write(0);
     }
 
     int bytesNeeded = (int) Math.ceil((float) bitCount / Byte.SIZE);
@@ -129,6 +140,8 @@ public class OozeDataOutputStream extends DataOutputStream {
    */
   public void writePalette(BlockPalette palette) throws IOException {
     writeVarInt(palette.size());
+
+    NBTOutputStream propertyWriter = new NBTOutputStream(out, false);
     for (BlockState state : palette) {
       // Name's length can't use more than 7 bits.
       String name = state.getName().toString();
@@ -150,58 +163,56 @@ public class OozeDataOutputStream extends DataOutputStream {
       write(length);
       writeBytes(name);
       if (hasProperties) {
-        NBTWriter.write(state.getProperties(), out, false);
+        propertyWriter.writeCompound(state.getProperties());
       }
     }
   }
 
-  /**
-   * Writes a 1-byte boolean to the underlying stream indicating whether or not NBT data follows. If
-   * so, the NBT data is assigned the provided {@code key}, wrapped in a nameless compound and
-   * compressed using Zstandard.
-   *
-   * @param write Whether or not the NBT data should be written.
-   * @param key   The key to map the {@code value} to inside the wrapper compound.
-   * @param value The NBT value to write conditionally.
-   * @throws IOException If the NBT could not be serialized or if any of the data could not be
-   *                     written.
-   */
-  public void writeOptionalNBT(boolean write, String key, Object value) throws IOException {
-    writeBoolean(write);
-
-    if (write) {
-      NBTCompound root = new NBTCompound();
-      root.put(key, value);
-
-      // Serialize & compress the contents of the wrapper compound.
-      ByteArrayOutputStream nbtOut = new ByteArrayOutputStream();
-      NBTWriter.write(root, nbtOut, false);
-      writeCompressed(nbtOut.toByteArray());
+  public void beginCompression() {
+    if (isCompressing) {
+      throw new IllegalStateException("Compression is already in progress");
     }
+
+    isCompressing = true;
+    actualOut = out;
+    out = new ByteArrayOutputStream();
   }
 
-  /**
-   * Same as {@link #writeCompressed(byte[], int)}, but compression {@code level} defaults to {@code
-   * 3}.
-   *
-   * @see #writeCompressed(byte[], int)
-   */
-  public void writeCompressed(byte[] data) throws IOException {
-    writeCompressed(data, 3);
-  }
+  public void endCompression() throws IOException {
+    if (!isCompressing || !(out instanceof ByteArrayOutputStream)) {
+      throw new IllegalStateException("Attempted to end compression without beginning");
+    }
 
-  /**
-   * Compresses the provided {@code data} using Zstandard and writes it to the underlying stream.
-   *
-   * @param level The level of compression to use, as defined by Zstandard.
-   * @throws IOException If the data could not be compressed or written to the stream.
-   */
-  public void writeCompressed(byte[] data, int level) throws IOException {
-    byte[] compressed = Zstd.compress(data, level);
+    byte[] uncompressed = ((ByteArrayOutputStream) out).toByteArray();
+    byte[] compressed = Zstd.compress(uncompressed, compressionLevel);
 
+    isCompressing = false;
+    out = actualOut;
+    actualOut = null;
+
+    writeVarInt(uncompressed.length);
     writeVarInt(compressed.length);
-    writeVarInt(data.length);
     write(compressed);
+  }
+
+  public void writeList(NBTList list) throws IOException {
+    if (!list.isEmpty() && list.getContentType() != TagType.COMPOUND) {
+      throw new IllegalArgumentException("Can only write lists of compounds");
+    }
+
+    // Write the list's size.
+    writeVarInt(list.size());
+
+    if (!list.isEmpty()) {
+      beginCompression();
+
+      NBTOutputStream nbtOut = new NBTOutputStream(out, false);
+      for (Object element : list) {
+        nbtOut.writeCompound((NBTCompound) element);
+      }
+
+      endCompression();
+    }
   }
 
   /**
@@ -211,37 +222,29 @@ public class OozeDataOutputStream extends DataOutputStream {
    *
    * @throws IOException If any part of the level could not be written to the stream.
    */
-  public void writeLevel(BoundedLevel level) throws IOException {
+  public void writeLevel(BoundedLevel<OozeChunk> level) throws IOException {
     int width = level.getWidth();
     int depth = level.getDepth();
-    int lowChunkX = level.getLowestChunkX();
-    int lowChunkZ = level.getLowestChunkZ();
+    int minChunkX = level.getLowestChunkPos().getX();
+    int minChunkZ = level.getLowestChunkPos().getZ();
+
     NBTList blockEntities = level.getBlockEntities();
     NBTList entities = level.getEntities();
     NBTCompound customStorage = level.getCustomStorage();
 
     // Generate the chunk mask.
-    Chunk[] chunksToWrite = new Chunk[width * depth];
+    OozeChunk[] chunksToWrite = new OozeChunk[width * depth];
     BitSet chunkMask = new BitSet(chunksToWrite.length);
     level.getStoredChunks().forEach(chunk -> {
       if (!chunk.isEmpty()) {
         int chunkX = chunk.getLocation().getX();
         int chunkZ = chunk.getLocation().getZ();
 
-        int chunkIndex = ((chunkX - lowChunkX) * depth) + (chunkZ - lowChunkZ);
+        int chunkIndex = ((chunkX - minChunkX) * depth) + (chunkZ - minChunkZ);
         chunkMask.set(chunkIndex, true);
         chunksToWrite[chunkIndex] = chunk;
       }
     });
-
-    // Compress & write chunk data in order of appearance in the chunk mask.
-    ByteArrayOutputStream chunkBytesOut = new ByteArrayOutputStream();
-    OozeDataOutputStream chunkDataOut = new OozeDataOutputStream(chunkBytesOut);
-    for (Chunk chunk : chunksToWrite) {
-      if (chunk != null) {
-        chunk.serialize(chunkDataOut);
-      }
-    }
 
     // Write magic numbers & format version.
     writeHeader();
@@ -249,17 +252,31 @@ public class OozeDataOutputStream extends DataOutputStream {
     // Write world size & location.
     writeByte(width);
     writeByte(depth);
-    writeShort(lowChunkX);
-    writeShort(lowChunkZ);
+    writeShort(minChunkX);
+    writeShort(minChunkZ);
 
-    // Write non-empty chunks.
+    // Write chunk mask & compressed chunk data.
     writeBitSet(chunkMask, chunksToWrite.length);
-    writeCompressed(chunkBytesOut.toByteArray());
+    beginCompression();
+    for (OozeChunk chunk : chunksToWrite) {
+      if (chunk != null) {
+        writeChunk(chunk);
+      }
+    }
+    endCompression();
 
-    // Write NBT extras (entities, block entities, and custom data).
-    writeOptionalNBT(!blockEntities.isEmpty(), "BlockEntities", blockEntities);
-    writeOptionalNBT(!entities.isEmpty(), "Entities", entities);
-    writeOptionalNBT(!customStorage.isEmpty(), "Custom", customStorage);
+    // Write NBT entities & tile entities (compressed separately).
+    writeList(blockEntities);
+    writeList(entities);
+
+    // Optionally write custom data (compressed).
+    boolean hasCustomStorage = !customStorage.isEmpty();
+    writeBoolean(hasCustomStorage);
+    if (hasCustomStorage) {
+      beginCompression();
+      NBTWriter.write(customStorage, out, false);
+      endCompression();
+    }
   }
 
   /**
@@ -269,7 +286,7 @@ public class OozeDataOutputStream extends DataOutputStream {
    *   <li>The first thing written is the chunk's {@link Chunk#getDataVersion() data version},
    *   encoded as a {@link #writeVarInt(int) VarInt}.</li>
    *
-   *   <li>Then, the chunk's height and lowest y-coordinate are written in that order as VarInts.
+   *   <li>Then, the chunk's height and lowest Y coordinate are written in that order as VarInts.
    *   Both are measured in 16-block units.</li>
    *
    *   <li>Following is a {@link #writeBitSet(BitSet, int) BitSet} indicating which 16x16x16 volumes
@@ -298,45 +315,39 @@ public class OozeDataOutputStream extends DataOutputStream {
    *
    * @throws IOException If the chunk could not be written to the stream.
    */
-  public void writeChunk(Chunk chunk) throws IOException {
-    if (!(chunk instanceof OozeChunk)) {
-      chunk.serialize(this);
-      return;
-    }
-    OozeChunk oozeChunk = (OozeChunk) chunk;
-
+  public void writeChunk(OozeChunk chunk) throws IOException {
     // Shortcut for completely empty chunks.
     if (chunk.isEmpty()) {
-      out.write(0); // Chunk height; 0 = no sections.
-      out.write(0); // Lowest section altitude; 0 = default.
-      out.write(0); // Section bitmask (nonEmptySections); 0 = all sections empty.
+      write(0); // Chunk height; 0 = no sections.
+      write(0); // Lowest section altitude; 0 = default.
+      write(0); // Section bitmask (nonEmptySections); 0 = all sections empty.
       return;
     }
 
-    int chunkHeight = oozeChunk.getHeight() / 16;
-    int minSectionAltitude = oozeChunk.getMinY() / 16;
+    int chunkHeight = chunk.getHeight() / 16;
+    int minSectionAltitude = chunk.getMinY() / 16;
 
     BitSet nonEmptySections = new BitSet(chunkHeight);
     List<BitCompactIntArray> sectionsToWrite = new ArrayList<>();
 
     // Determine which sections are non-empty.
     for (int i = 0; i < chunkHeight; i++) {
-      PalettedVolume section = oozeChunk.getSection(i - minSectionAltitude);
+      PalettedVolume section = chunk.getSection(i + minSectionAltitude);
 
       if (section != null && section.isNotEmpty()) {
         // Mark the section as non-air.
         nonEmptySections.set(i);
 
         BitCompactIntArray storage = BitCompactIntArray.fromIntArray(section.getStorage());
-        if (section.getPalette() != oozeChunk.getPalette()) {
+        if (section.getPalette() != chunk.getPalette()) {
           // Merge the section's palette into the chunk's (if it wasn't already).
-          oozeChunk.getPalette().addAll(section.getPalette()).upgrade(storage);
+          chunk.getPalette().addAll(section.getPalette()).upgrade(storage);
         }
         sectionsToWrite.add(storage);
       }
     }
 
-    writeVarInt(oozeChunk.getDataVersion());
+    writeVarInt(chunk.getDataVersion());
 
     // Write chunk dimensions & section mask.
     writeVarInt(chunkHeight);
@@ -345,7 +356,7 @@ public class OozeDataOutputStream extends DataOutputStream {
 
     // Only write palette & blocks if there is at least 1 non-empty section.
     if (!nonEmptySections.isEmpty()) {
-      writePalette(oozeChunk.getPalette());
+      writePalette(chunk.getPalette());
 
       for (BitCompactIntArray storage : sectionsToWrite) {
         write(storage);
