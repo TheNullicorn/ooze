@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.serialize;
+package me.nullicorn.ooze.api.serialize;
 
 /**
  * A two-way function for converting between types of objects.

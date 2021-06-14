@@ -1,6 +1,6 @@
 package me.nullicorn.ooze.convert.region;
 
-import me.nullicorn.ooze.Location2D;
+import me.nullicorn.ooze.api.world.Location2D;
 
 /**
  * Types of files used to store Minecraft levels.

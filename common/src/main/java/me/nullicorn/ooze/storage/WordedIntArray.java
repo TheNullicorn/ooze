@@ -3,6 +3,7 @@ package me.nullicorn.ooze.storage;
 import java.util.Arrays;
 import java.util.Objects;
 import me.nullicorn.ooze.BitUtils;
+import me.nullicorn.ooze.api.storage.IntArray;
 
 /**
  * A compact format for storing many integers with a known limit. Used by Minecraft to store block

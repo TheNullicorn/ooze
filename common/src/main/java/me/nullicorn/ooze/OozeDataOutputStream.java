@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.serialize;
+package me.nullicorn.ooze;
 
 import com.github.luben.zstd.Zstd;
 import com.github.luben.zstd.ZstdException;
@@ -14,13 +14,14 @@ import me.nullicorn.nedit.NBTWriter;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.nedit.type.TagType;
-import me.nullicorn.ooze.ResourceLocation;
+import me.nullicorn.ooze.api.ResourceLocation;
+import me.nullicorn.ooze.api.serialize.OozeSerializable;
 import me.nullicorn.ooze.storage.BitCompactIntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
 import me.nullicorn.ooze.storage.PalettedVolume;
-import me.nullicorn.ooze.world.BlockState;
-import me.nullicorn.ooze.world.BoundedLevel;
-import me.nullicorn.ooze.world.Chunk;
+import me.nullicorn.ooze.api.world.BlockState;
+import me.nullicorn.ooze.api.world.BoundedLevel;
+import me.nullicorn.ooze.api.world.Chunk;
 import me.nullicorn.ooze.world.OozeChunk;
 
 /**

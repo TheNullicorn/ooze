@@ -1,6 +1,6 @@
-package me.nullicorn.ooze.storage;
+package me.nullicorn.ooze.api.storage;
 
-import me.nullicorn.ooze.world.BlockState;
+import me.nullicorn.ooze.api.world.BlockState;
 
 /**
  * A three-dimensional region of blocks.

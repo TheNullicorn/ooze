@@ -7,7 +7,9 @@ import java.util.Map;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.nedit.type.TagType;
-import me.nullicorn.ooze.Location2D;
+import me.nullicorn.ooze.api.world.Location2D;
+import me.nullicorn.ooze.api.world.BlockState;
+import me.nullicorn.ooze.api.world.BoundedLevel;
 import org.jetbrains.annotations.Nullable;
 
 /**

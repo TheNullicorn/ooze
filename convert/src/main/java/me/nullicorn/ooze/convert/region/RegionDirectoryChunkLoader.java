@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import me.nullicorn.nedit.NBTReader;
 import me.nullicorn.nedit.type.NBTCompound;
-import me.nullicorn.ooze.Location2D;
+import me.nullicorn.ooze.api.world.Location2D;
 import me.nullicorn.ooze.convert.ChunkSource;
 import org.jetbrains.annotations.Nullable;
 

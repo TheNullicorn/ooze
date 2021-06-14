@@ -1,8 +1,7 @@
-package me.nullicorn.ooze.world;
+package me.nullicorn.ooze.api.world;
 
-import me.nullicorn.ooze.storage.BlockVolume;
-import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.serialize.OozeSerializable;
+import me.nullicorn.ooze.api.serialize.OozeSerializable;
+import me.nullicorn.ooze.api.storage.BlockVolume;
 
 /**
  * A column of blocks inside a Minecraft world, whose width and depth are both 16 blocks, and whose

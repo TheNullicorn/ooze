@@ -1,16 +1,19 @@
 package me.nullicorn.ooze.world;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 import lombok.Getter;
-import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.serialize.OozeDataOutputStream;
+import me.nullicorn.ooze.api.world.Location2D;
+import me.nullicorn.ooze.OozeDataOutputStream;
+import me.nullicorn.ooze.api.world.BlockState;
+import me.nullicorn.ooze.api.world.Chunk;
 import me.nullicorn.ooze.storage.BitCompactIntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
-import me.nullicorn.ooze.storage.BlockVolume;
+import me.nullicorn.ooze.api.storage.BlockVolume;
 import me.nullicorn.ooze.storage.PalettedVolume;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -188,9 +191,13 @@ public class OozeChunk implements Chunk, Iterable<OozeChunkSection> {
   }
 
   @Override
-  public void serialize(OozeDataOutputStream out) throws IOException {
-    // This won't cause recursion because writeChunk(...) handles OozeChunks differently. However...
-    // TODO: 6/10/21 Serialization could be designed a lot better; this ^ seems dumb.
-    out.writeChunk(this);
+  public void serialize(DataOutputStream out) throws IOException {
+    // TODO: 6/10/21 Serialization should probably be decoupled from storage objects.
+
+    OozeDataOutputStream oozeOut = (out instanceof OozeDataOutputStream)
+        ? (OozeDataOutputStream) out
+        : new OozeDataOutputStream(out);
+
+    oozeOut.writeChunk(this);
   }
 }

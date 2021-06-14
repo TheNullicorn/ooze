@@ -1,11 +1,10 @@
-package me.nullicorn.ooze.world;
+package me.nullicorn.ooze.api.world;
 
 import java.util.Collection;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.nedit.type.TagType;
-import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.storage.BlockVolume;
+import me.nullicorn.ooze.api.storage.BlockVolume;
 import org.jetbrains.annotations.Nullable;
 
 /**

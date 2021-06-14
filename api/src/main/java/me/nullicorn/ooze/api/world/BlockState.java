@@ -1,9 +1,8 @@
-package me.nullicorn.ooze.world;
+package me.nullicorn.ooze.api.world;
 
 import java.util.Objects;
-import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
-import me.nullicorn.ooze.ResourceLocation;
+import me.nullicorn.ooze.api.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -11,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author Nullicorn
  */
-public class BlockState {
+public final class BlockState {
 
   /**
    * A block state that can generally be used as a fallback when no other state can be found (for
@@ -19,17 +18,24 @@ public class BlockState {
    */
   public static final BlockState DEFAULT = new BlockState(new ResourceLocation("air"));
 
-  /**
-   * The block's main identifier (e.g. "stone", "piston", etc).
-   */
-  @Getter
   private final ResourceLocation name;
 
   /**
-   * Any additional properties defining the state of the block (e.g. direction, power, etc).
+   * @return The block's main identifier (e.g. "stone", "piston", etc).
+   */
+  public ResourceLocation getName() {
+    return name;
+  }
+
+  /**
+   * @return Any additional properties defining the state of the block (e.g. direction, power, etc).
    */
   @Nullable
-  @Getter
+  public NBTCompound getProperties() {
+    return properties;
+  }
+
+  @Nullable
   private final NBTCompound properties;
 
   /**

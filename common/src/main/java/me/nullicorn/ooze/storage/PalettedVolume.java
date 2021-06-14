@@ -1,6 +1,8 @@
 package me.nullicorn.ooze.storage;
 
-import me.nullicorn.ooze.world.BlockState;
+import me.nullicorn.ooze.api.storage.BlockVolume;
+import me.nullicorn.ooze.api.storage.IntArray;
+import me.nullicorn.ooze.api.world.BlockState;
 
 /**
  * A volume of blocks that uses a {@link BlockPalette palette} to associate each block's position

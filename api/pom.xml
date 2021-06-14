@@ -10,7 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>me.nullicorn.ooze</groupId>
-    <artifactId>common</artifactId>
+    <artifactId>api</artifactId>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -21,24 +21,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>com.github.TheNullicorn</groupId>
             <artifactId>Nedit</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.github.luben</groupId>
-            <artifactId>zstd-jni</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>me.nullicorn.ooze</groupId>
-            <artifactId>api</artifactId>
-            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>

@@ -12,6 +12,7 @@
     <module>convert</module>
     <module>common</module>
     <module>spigot</module>
+    <module>api</module>
   </modules>
 
   <properties>
@@ -28,6 +29,13 @@
     </repository>
   </repositories>
 
+  <dependencies>
+    <dependency>
+      <groupId>org.jetbrains</groupId>
+      <artifactId>annotations</artifactId>
+    </dependency>
+  </dependencies>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -37,11 +45,17 @@
         <scope>provided</scope>
       </dependency>
 
+      <dependency>
+        <groupId>org.jetbrains</groupId>
+        <artifactId>annotations</artifactId>
+        <version>13.0</version>
+      </dependency>
+
       <!-- NBT Reading & Writing -->
       <dependency>
         <groupId>com.github.TheNullicorn</groupId>
         <artifactId>Nedit</artifactId>
-        <version>e55fa9297b</version>
+        <version>v2.0.0</version>
       </dependency>
 
       <!-- Zstd Compression -->

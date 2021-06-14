@@ -1,10 +1,10 @@
-package me.nullicorn.ooze.serialize.nbt;
+package me.nullicorn.ooze.nbt;
 
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.nedit.type.TagType;
-import me.nullicorn.ooze.serialize.Codec;
-import me.nullicorn.ooze.serialize.CodingException;
+import me.nullicorn.ooze.api.serialize.Codec;
+import me.nullicorn.ooze.api.serialize.CodingException;
 import me.nullicorn.ooze.storage.BitCompactIntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
 import me.nullicorn.ooze.storage.WordedIntArray;

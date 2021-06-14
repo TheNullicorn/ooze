@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.serialize;
+package me.nullicorn.ooze.api.serialize;
 
 import java.io.IOException;
 

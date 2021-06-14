@@ -5,9 +5,9 @@ import java.util.HashSet;
 import java.util.Set;
 import lombok.Getter;
 import me.nullicorn.nedit.type.NBTCompound;
-import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.serialize.nbt.ChunkCodec;
-import me.nullicorn.ooze.serialize.nbt.ChunkCodec.PooledSectionCodecProvider;
+import me.nullicorn.ooze.api.world.Location2D;
+import me.nullicorn.ooze.nbt.ChunkCodec;
+import me.nullicorn.ooze.nbt.ChunkCodec.PooledSectionCodecProvider;
 import me.nullicorn.ooze.world.OozeChunk;
 import me.nullicorn.ooze.world.OozeLevel;
 

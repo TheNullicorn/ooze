@@ -1,8 +1,7 @@
-package me.nullicorn.ooze;
+package me.nullicorn.ooze.api;
 
 import java.util.Objects;
 import java.util.regex.Pattern;
-import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -72,10 +71,7 @@ public class ResourceLocation {
     return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-';
   }
 
-  @Getter
   private final String namespace;
-
-  @Getter
   private final String path;
 
   /**
@@ -104,6 +100,14 @@ public class ResourceLocation {
 
     this.namespace = namespace;
     this.path = path;
+  }
+
+  public String getNamespace() {
+    return namespace;
+  }
+
+  public String getPath() {
+    return path;
   }
 
   @Override

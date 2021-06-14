@@ -1,4 +1,4 @@
-package me.nullicorn.ooze;
+package me.nullicorn.ooze.api.world;
 
 import java.util.Objects;
 

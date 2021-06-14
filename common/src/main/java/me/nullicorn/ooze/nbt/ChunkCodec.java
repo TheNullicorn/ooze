@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.serialize.nbt;
+package me.nullicorn.ooze.nbt;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -8,9 +8,9 @@ import java.util.function.IntFunction;
 import me.nullicorn.nedit.type.NBTCompound;
 import me.nullicorn.nedit.type.NBTList;
 import me.nullicorn.nedit.type.TagType;
-import me.nullicorn.ooze.Location2D;
-import me.nullicorn.ooze.serialize.Codec;
-import me.nullicorn.ooze.serialize.CodingException;
+import me.nullicorn.ooze.api.world.Location2D;
+import me.nullicorn.ooze.api.serialize.Codec;
+import me.nullicorn.ooze.api.serialize.CodingException;
 import me.nullicorn.ooze.world.OozeChunk;
 import me.nullicorn.ooze.world.OozeChunkSection;
 import me.nullicorn.ooze.world.OozeLevel;

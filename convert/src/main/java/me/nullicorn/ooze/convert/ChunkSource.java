@@ -3,7 +3,7 @@ package me.nullicorn.ooze.convert;
 import java.io.Closeable;
 import java.io.IOException;
 import me.nullicorn.nedit.type.NBTCompound;
-import me.nullicorn.ooze.Location2D;
+import me.nullicorn.ooze.api.world.Location2D;
 import org.jetbrains.annotations.Nullable;
 
 /**
