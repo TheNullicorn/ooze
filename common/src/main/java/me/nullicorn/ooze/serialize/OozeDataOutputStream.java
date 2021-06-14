@@ -1,6 +1,7 @@
 package me.nullicorn.ooze.serialize;
 
 import com.github.luben.zstd.Zstd;
+import com.github.luben.zstd.ZstdException;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -168,7 +169,28 @@ public class OozeDataOutputStream extends DataOutputStream {
     }
   }
 
-  public void beginCompression() {
+  /**
+   * Tells the stream that any bytes written after a call to this method should be compressed as a
+   * single unit. When the compressed section is done being written, {@link #endCompression()} must
+   * be called to finalize & flush the compressed data to the underlying stream.
+   * <p><br>
+   * Notes:
+   * <ul>
+   *   <li>Compression is done using Zstandard with the level provided at the stream's
+   *   construction.</li>
+   *   <li>Compression is not recursive. It can either be enabled or disabled at any given time for
+   *   a single stream. Attempting to use this method multiple times without calling {@link
+   *   #endCompression()} will cause an {@link IllegalStateException} to be thrown.</li>
+   * </ul>
+   *
+   * @throws IllegalStateException If the stream was already in compression mode. This happens if
+   *                               the method is used multiple times without matching calls to
+   *                               {@link #endCompression()}.
+   * @see #endCompression()
+   */
+  // Suppressed because IOException is thrown for consistency, as well as to future-proof the API.
+  @SuppressWarnings({"RedundantThrows", "java:S1130"})
+  public void beginCompression() throws IOException {
     if (isCompressing) {
       throw new IllegalStateException("Compression is already in progress");
     }
@@ -178,13 +200,26 @@ public class OozeDataOutputStream extends DataOutputStream {
     out = new ByteArrayOutputStream();
   }
 
+  /**
+   * Tells the stream that a segment of compressed data is finished, causing that data to be flushed
+   * to the stream. See {@link #beginCompression()} for usage and compression details.
+   *
+   * @throws IOException           If the data could not be compressed or written to the stream.
+   * @throws IllegalStateException If a compressed section had not already been started.
+   * @see #beginCompression()
+   */
   public void endCompression() throws IOException {
     if (!isCompressing || !(out instanceof ByteArrayOutputStream)) {
       throw new IllegalStateException("Attempted to end compression without beginning");
     }
 
     byte[] uncompressed = ((ByteArrayOutputStream) out).toByteArray();
-    byte[] compressed = Zstd.compress(uncompressed, compressionLevel);
+    byte[] compressed;
+    try {
+      compressed = Zstd.compress(uncompressed, compressionLevel);
+    } catch (ZstdException e) {
+      throw new IOException("Failed to compress buffer", e);
+    }
 
     isCompressing = false;
     out = actualOut;
@@ -195,6 +230,24 @@ public class OozeDataOutputStream extends DataOutputStream {
     write(compressed);
   }
 
+  /**
+   * Writes a list of NBT compounds to the stream.
+   * <p><br>
+   * First, a {@link #writeVarInt(int) VarInt} is written to the stream indicating the array's
+   * length. If the list is empty, nothing more is written. Otherwise, inside a {@link
+   * #beginCompression() compressed section}, each compound in the list is serialized. The compounds
+   * themselves are written directly without a name, and are delimited only by their respective
+   * {@link TagType#END END} tags. After all compounds are written, the compressed section is {@link
+   * #endCompression() closed}.
+   *
+   * @param list A list of {@link NBTCompound compounds} to write to the stream. May be empty, but
+   *             not null.
+   * @throws IOException              If the elements in the list could not be serialized, if the
+   *                                  compression failed, or if the compressed list could not be
+   *                                  written to the stream.
+   * @throws IllegalArgumentException If the list is non-empty but its {@link NBTList#getContentType()
+   *                                  contents} are not {@link TagType#COMPOUND COMPOUND}s.
+   */
   public void writeList(NBTList list) throws IOException {
     if (!list.isEmpty() && list.getContentType() != TagType.COMPOUND) {
       throw new IllegalArgumentException("Can only write lists of compounds");
