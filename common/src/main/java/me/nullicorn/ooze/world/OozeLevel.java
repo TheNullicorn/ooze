@@ -27,8 +27,8 @@ public class OozeLevel implements BoundedLevel<OozeChunk> {
   private final Map<Location2D, OozeChunk> chunks;
 
   // The highest and lowest chunk coordinates in the level. These are initialized the opposite way
-  // so that the first chunk stored will always have the highest and lowest coordinates on both
-  // axes.
+  // (e.g. low is set to MAX_CHUNK) so that the first chunk stored will always have the highest and
+  // lowest coordinates on both axes.
   private int lowChunkX;
   private int highChunkX;
   private int lowChunkZ;
@@ -52,7 +52,6 @@ public class OozeLevel implements BoundedLevel<OozeChunk> {
   }
 
   // Chunk accessors.
-
 
   @Override
   public @Nullable OozeChunk getChunkAt(Location2D chunkLocation) {
@@ -102,6 +101,7 @@ public class OozeLevel implements BoundedLevel<OozeChunk> {
    * @return Whether or not Ooze's format limitations allow a chunk to be stored at the given
    * location.
    */
+  // Suppressed for readability.
   @SuppressWarnings({"java:S1871", "RedundantIfStatement"})
   private boolean isChunkInBounds(Location2D chunkLoc) {
     int chunkX = chunkLoc.getX();

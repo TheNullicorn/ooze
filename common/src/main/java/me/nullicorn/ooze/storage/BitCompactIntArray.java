@@ -156,6 +156,7 @@ public class BitCompactIntArray implements IntArray, OozeSerializable {
    * Copies the contents, size, etc, of an {@code other} array into a new one, such that modifying
    * one array will not affect the contents of the other.
    */
+  // Suppressed because Arrays#copyOf(...) isn't recognized as a copy operation, even though it is.
   @SuppressWarnings("CopyConstructorMissesField")
   public BitCompactIntArray(BitCompactIntArray other) {
     this(Arrays.copyOf(other.data, other.data.length),

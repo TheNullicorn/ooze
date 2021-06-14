@@ -34,7 +34,6 @@ public class LevelBuilder {
    * Adds the chunk at chunk coordinates ({@code chunkX}, {@code chunkZ}) to the world, if it exists
    * in the {@link #getSource() source}.
    */
-  @SuppressWarnings("UnusedReturnValue")
   public LevelBuilder addChunk(int chunkX, int chunkZ) {
     return addChunk(new Location2D(chunkX, chunkZ));
   }

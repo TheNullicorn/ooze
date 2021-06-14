@@ -38,7 +38,6 @@ public class RegionDirectoryChunkLoader implements ChunkSource {
    * @throws IOException If any region threw an IO exception while being unloaded. If multiple do,
    *                     the first one is thrown.
    */
-  @SuppressWarnings("java:S2583")
   public void reset() throws IOException {
     IOException thrownInLoop = null;
 
@@ -97,9 +96,9 @@ public class RegionDirectoryChunkLoader implements ChunkSource {
    * @return The loaded region file, or null if none exists for the provided coordinates.
    * @throws IOException If the region file could not be read.
    */
-  @Nullable
+  // Suppressed because we don't want to auto-close the region file; it's being stored.
   @SuppressWarnings("java:S2095")
-  public RegionFile loadRegion(Location2D regionLocation) throws IOException {
+  public @Nullable RegionFile loadRegion(Location2D regionLocation) throws IOException {
     RegionFile region = loadedRegions.get(regionLocation);
 
     // Load the region if it isn't already loaded.
