@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author Nullicorn
  */
-public class ResourceLocation {
+public final class ResourceLocation {
 
   // Used when no namespace is provided.
   private static final String DEFAULT_NAMESPACE = "minecraft";
