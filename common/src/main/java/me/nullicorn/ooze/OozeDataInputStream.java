@@ -16,7 +16,7 @@ import me.nullicorn.ooze.api.ResourceLocation;
 import me.nullicorn.ooze.api.world.Location2D;
 import me.nullicorn.ooze.storage.BitCompactIntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
-import me.nullicorn.ooze.api.storage.IntArray;
+import me.nullicorn.ooze.storage.IntArray;
 import me.nullicorn.ooze.api.world.BlockState;
 import me.nullicorn.ooze.api.world.BoundedLevel;
 import me.nullicorn.ooze.world.OozeChunk;

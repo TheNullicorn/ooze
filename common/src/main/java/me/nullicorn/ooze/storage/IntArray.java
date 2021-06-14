@@ -1,4 +1,4 @@
-package me.nullicorn.ooze.api.storage;
+package me.nullicorn.ooze.storage;
 
 /**
  * A data structure that stores an array of positive integers, with a maximum of up to {@link

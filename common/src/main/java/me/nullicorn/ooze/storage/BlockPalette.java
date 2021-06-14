@@ -5,7 +5,6 @@ import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
 import lombok.Getter;
-import me.nullicorn.ooze.api.storage.IntArray;
 import me.nullicorn.ooze.api.world.BlockState;
 import org.jetbrains.annotations.NotNull;
 

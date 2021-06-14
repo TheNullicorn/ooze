@@ -8,7 +8,6 @@ import me.nullicorn.ooze.BitUtils;
 import me.nullicorn.ooze.OozeDataInputStream;
 import me.nullicorn.ooze.OozeDataOutputStream;
 import me.nullicorn.ooze.api.serialize.OozeSerializable;
-import me.nullicorn.ooze.api.storage.IntArray;
 
 /**
  * An integer array that internally packs values as close as possible to maintain low footprint

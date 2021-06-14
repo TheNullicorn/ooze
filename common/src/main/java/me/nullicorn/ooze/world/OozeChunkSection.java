@@ -4,7 +4,7 @@ import lombok.Getter;
 import me.nullicorn.ooze.api.world.BlockState;
 import me.nullicorn.ooze.storage.BitCompactIntArray;
 import me.nullicorn.ooze.storage.BlockPalette;
-import me.nullicorn.ooze.api.storage.IntArray;
+import me.nullicorn.ooze.storage.IntArray;
 import me.nullicorn.ooze.storage.PalettedVolume;
 
 /**
