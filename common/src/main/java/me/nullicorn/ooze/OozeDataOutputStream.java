@@ -302,7 +302,7 @@ public class OozeDataOutputStream extends DataOutputStream {
    *
    * @throws IOException If any part of the level could not be written to the stream.
    */
-  public void writeLevel(BoundedLevel<OozeChunk> level) throws IOException {
+  public void writeLevel(BoundedLevel<?> level) throws IOException {
     int width = level.getWidth();
     int depth = level.getDepth();
     int minChunkX = level.getLowestChunkPos().getX();
@@ -313,7 +313,7 @@ public class OozeDataOutputStream extends DataOutputStream {
     NBTCompound customStorage = level.getCustomStorage();
 
     // Generate the chunk mask.
-    OozeChunk[] chunksToWrite = new OozeChunk[width * depth];
+    Chunk[] chunksToWrite = new OozeChunk[width * depth];
     BitSet chunkMask = new BitSet(chunksToWrite.length);
     level.getStoredChunks().forEach(chunk -> {
       if (!chunk.isEmpty()) {
@@ -338,9 +338,9 @@ public class OozeDataOutputStream extends DataOutputStream {
     // Write chunk mask & compressed chunk data.
     writeBitSet(chunkMask, chunksToWrite.length);
     beginCompression();
-    for (OozeChunk chunk : chunksToWrite) {
+    for (Chunk chunk : chunksToWrite) {
       if (chunk != null) {
-        writeChunk(chunk);
+        chunk.serialize(this);
       }
     }
     endCompression();
@@ -388,7 +388,7 @@ public class OozeDataOutputStream extends DataOutputStream {
    *   bit-compact format}.</li>
    * </ul>
    * <p>
-   * If the chunk's implementation is custom, {@link OozeChunk#serialize(OozeDataOutputStream)
+   * If the chunk's implementation is custom, {@link OozeChunk#serialize(DataOutputStream)
    * serialize(...)} is called on the chunk, with the current stream as its parameter. Therefore,
    * calling this method from the chunk's serialize(...) method is recursive, and will result in a
    * {@link StackOverflowError}.

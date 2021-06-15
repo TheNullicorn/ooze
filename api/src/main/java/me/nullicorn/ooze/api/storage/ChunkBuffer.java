@@ -16,10 +16,10 @@ public interface ChunkBuffer<C extends Chunk> {
      * @return The level that provides the buffer with chunks. This is also where {@link #flush()
      * flushed chunks} are sent.
      */
-    BoundedLevel<C> getSource();
+    BoundedLevel<C> getLevel();
 
     /**
-     * Moves any chunks in the buffer into its {@link #getSource() source}, effectively emptying the
+     * Moves any chunks in the buffer into its {@link #getLevel() level}, effectively emptying the
      * buffer.
      *
      * @return The number of chunks flushed out into the buffer's source.
